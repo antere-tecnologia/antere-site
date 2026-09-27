@@ -1,0 +1,5 @@
+# Site institucional Antere (www.antere.com.br) + páginas legais (legal.antere.com.br)
+# Só a pasta public/ é publicada; _src/ (gerador e logos originais) fica fora.
+[build]
+  publish = "public"
+  command = ""

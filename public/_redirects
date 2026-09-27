@@ -1,0 +1,5 @@
+# Mantém as URLs antigas das páginas legais (usadas no app da Meta) no novo host.
+# Requer legal.antere.com.br adicionado como domínio do projeto no Netlify.
+https://legal.antere.com.br/    /legal/privacidade.html  200!
+https://legal.antere.com.br/*   /legal/:splat            200!
+http://legal.antere.com.br/*    https://legal.antere.com.br/:splat  301!
