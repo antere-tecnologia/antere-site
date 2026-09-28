@@ -5,6 +5,7 @@ Publicado no Netlify (projeto `antere-site`) a partir da pasta `public/`.
 - `public/`: tudo que vai ao ar — páginas (`index.html`, `como-funciona.html`, `solucoes.html`, `sobre.html`, `contato.html`, `calculadora.html`, `404.html`), `assets/`, `legal/`, `robots.txt`, `sitemap.xml`, `_headers` e `_redirects`.
 - `public/legal/`: Política de Privacidade, Termos de Uso e Exclusão de Dados. Continuam acessíveis em `legal.antere.com.br` pelas regras de `_redirects` (o domínio precisa estar adicionado ao projeto no Netlify).
 - `_src/`: gerador das páginas (`build_site.py`) e logos originais. Não é publicado. Depois de gerar, copie os HTML para `public/`.
+  - Atenção (28/09/2026): o `_src/build_site.py` está desalinhado de `public/` e gera páginas diferentes das publicadas (cor do tema no `<meta name="theme-color">`: `#3A34D6` no gerador, `#12131A` em `public/`; e falta no gerador a regra de CSS `:root[data-theme="dark"] .stack{...}`). Antes de regerar o site pelo gerador, alinhe o gerador com `public/`; senão essas correções são perdidas.
 - `netlify.toml`: `publish = "public"`, sem comando de build.
 
 Formulário de contato envia POST para `https://raregoat-n8n.cloudfy.live/webhook/site-contato`.
