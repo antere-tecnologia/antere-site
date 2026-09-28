@@ -120,6 +120,21 @@ FOOTER = f"""
 </script>
 """
 
+UTM_SCRIPT = r"""
+<script>
+/* UTM (28/09/2026): guarda utm_source, utm_medium, utm_campaign e gclid da chegada (sessionStorage, 1ª chegada da sessão) e acrescenta aos links de proposta (/form/proposta), mantendo o ref. */
+(function(){var K=['utm_source','utm_medium','utm_campaign','gclid'],S='antere_utm',g=null,q;
+try{q=new URLSearchParams(window.location.search)}catch(e){return}
+var c={},tem=false;for(var i=0;i<K.length;i++){var v=q.get(K[i]);if(v){c[K[i]]=String(v).slice(0,200);tem=true}}
+try{g=JSON.parse(window.sessionStorage.getItem(S)||'null')}catch(e){g=null}
+if(!g&&tem){g=c;try{window.sessionStorage.setItem(S,JSON.stringify(g))}catch(e){}}
+if(!g)return;
+var as=document.querySelectorAll('a[href*="/form/proposta"]');
+for(var j=0;j<as.length;j++){try{var u=new URL(as[j].href,window.location.href);for(var k=0;k<K.length;k++){if(g[K[k]]&&!u.searchParams.get(K[k]))u.searchParams.set(K[k],g[K[k]])}as[j].href=u.toString()}catch(e){}}
+})();
+</script>
+"""
+
 def page(title, description, active, body, extra_head="", extra_script="", standalone=True):
     canon = SITE + "/" + ("" if active == "index.html" else active)
     head = (f"<title>{title}</title>\n<meta name=\"description\" content=\"{description}\">\n"
@@ -128,9 +143,9 @@ def page(title, description, active, body, extra_head="", extra_script="", stand
             f"<meta property=\"og:title\" content=\"{title}\"><meta property=\"og:description\" content=\"{description}\"><meta property=\"og:url\" content=\"{canon}\">\n"
             f"<meta property=\"og:image\" content=\"{SITE}/assets/og-image.png\"><meta name=\"twitter:card\" content=\"summary_large_image\">\n"
             + CSS + extra_head)
-    content = head + nav(active) + body + FOOTER + extra_script
+    content = head + nav(active) + body + FOOTER + UTM_SCRIPT + extra_script
     if standalone:
-        return "<!doctype html>\n<html lang=\"pt-BR\" data-theme=\"dark\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n" + head + "</head>\n<body>\n" + nav(active) + body + FOOTER + extra_script + "\n</body>\n</html>\n"
+        return "<!doctype html>\n<html lang=\"pt-BR\" data-theme=\"dark\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n" + head + "</head>\n<body>\n" + nav(active) + body + FOOTER + UTM_SCRIPT + extra_script + "\n</body>\n</html>\n"
     return content
 
 # ---------------- HOME ----------------

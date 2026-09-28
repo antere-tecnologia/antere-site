@@ -145,5 +145,17 @@ footer a:hover{text-decoration:underline}
 (function(){var b=document.getElementById('menu-toggle'),m=document.getElementById('menu');if(!b)return;b.addEventListener('click',function(){var o=m.classList.toggle('open');b.setAttribute('aria-expanded',o?'true':'false');});})();
 </script>
 
+<script>
+/* UTM (28/09/2026): guarda utm_source, utm_medium, utm_campaign e gclid da chegada (sessionStorage, 1ª chegada da sessão) e acrescenta aos links de proposta (/form/proposta), mantendo o ref. */
+(function(){var K=['utm_source','utm_medium','utm_campaign','gclid'],S='antere_utm',g=null,q;
+try{q=new URLSearchParams(window.location.search)}catch(e){return}
+var c={},tem=false;for(var i=0;i<K.length;i++){var v=q.get(K[i]);if(v){c[K[i]]=String(v).slice(0,200);tem=true}}
+try{g=JSON.parse(window.sessionStorage.getItem(S)||'null')}catch(e){g=null}
+if(!g&&tem){g=c;try{window.sessionStorage.setItem(S,JSON.stringify(g))}catch(e){}}
+if(!g)return;
+var as=document.querySelectorAll('a[href*="/form/proposta"]');
+for(var j=0;j<as.length;j++){try{var u=new URL(as[j].href,window.location.href);for(var k=0;k<K.length;k++){if(g[K[k]]&&!u.searchParams.get(K[k]))u.searchParams.set(K[k],g[K[k]])}as[j].href=u.toString()}catch(e){}}
+})();
+</script>
 </body>
 </html>

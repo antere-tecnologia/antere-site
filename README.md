@@ -9,3 +9,4 @@ Publicado no Netlify (projeto `antere-site`) a partir da pasta `public/`.
 
 Formulário de contato envia POST para `https://raregoat-n8n.cloudfy.live/webhook/site-contato`.
 CTA de proposta aponta para `https://raregoat-n8n.cloudfy.live/form/proposta?ref=site_institucional`.
+UTM (28/09/2026): um script em todas as páginas guarda `utm_source`, `utm_medium`, `utm_campaign` e `gclid` da chegada (sessionStorage) e acrescenta esses parâmetros aos links de proposta, mantendo o `ref`. Testes e fonte do script: `antere-automacao/n8n/ferramentas/site_utm/utm_inline.js` e `n8n/testes/site_utm.test.js`.
