@@ -120,6 +120,22 @@ FOOTER = f"""
 </script>
 """
 
+GTAG_HEAD = """
+<!-- Google Ads (09/10/2026): tag global gtag.js, ID AW-18479570694 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-18479570694"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','AW-18479570694');</script>
+"""
+
+CONV_SCRIPT = r"""
+<script>
+/* Google Ads (09/10/2026): conversão no clique de qualquer link para /form/proposta. DESLIGADA enquanto ROTULO estiver vazio; para ativar, preencher com o rótulo da conversão (send_to = AW-18479570694/<rótulo>). */
+(function(){var ROTULO='';if(!ROTULO)return;
+document.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[href*="/form/proposta"]'):null;if(!a||typeof window.gtag!=='function')return;
+try{window.gtag('event','conversion',{send_to:'AW-18479570694/'+ROTULO})}catch(x){}},true);
+})();
+</script>
+"""
+
 UTM_SCRIPT = r"""
 <script>
 /* UTM (28/09/2026): guarda utm_source, utm_medium, utm_campaign e gclid da chegada (sessionStorage, 1ª chegada da sessão) e acrescenta aos links de proposta (/form/proposta), mantendo o ref. */
@@ -137,15 +153,15 @@ for(var j=0;j<as.length;j++){try{var u=new URL(as[j].href,window.location.href);
 
 def page(title, description, active, body, extra_head="", extra_script="", standalone=True):
     canon = SITE + "/" + ("" if active == "index.html" else active)
-    head = (f"<title>{title}</title>\n<meta name=\"description\" content=\"{description}\">\n"
+    head = (GTAG_HEAD + f"<title>{title}</title>\n<meta name=\"description\" content=\"{description}\">\n"
             f"<link rel=\"canonical\" href=\"{canon}\">\n"
             f"<meta property=\"og:type\" content=\"website\"><meta property=\"og:site_name\" content=\"Antere\"><meta property=\"og:locale\" content=\"pt_BR\">\n"
             f"<meta property=\"og:title\" content=\"{title}\"><meta property=\"og:description\" content=\"{description}\"><meta property=\"og:url\" content=\"{canon}\">\n"
             f"<meta property=\"og:image\" content=\"{SITE}/assets/og-image.png\"><meta name=\"twitter:card\" content=\"summary_large_image\">\n"
             + CSS + extra_head)
-    content = head + nav(active) + body + FOOTER + UTM_SCRIPT + extra_script
+    content = head + nav(active) + body + FOOTER + UTM_SCRIPT + CONV_SCRIPT + extra_script
     if standalone:
-        return "<!doctype html>\n<html lang=\"pt-BR\" data-theme=\"dark\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n" + head + "</head>\n<body>\n" + nav(active) + body + FOOTER + UTM_SCRIPT + extra_script + "\n</body>\n</html>\n"
+        return "<!doctype html>\n<html lang=\"pt-BR\" data-theme=\"dark\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n" + head + "</head>\n<body>\n" + nav(active) + body + FOOTER + UTM_SCRIPT + CONV_SCRIPT + extra_script + "\n</body>\n</html>\n"
     return content
 
 # ---------------- HOME ----------------
