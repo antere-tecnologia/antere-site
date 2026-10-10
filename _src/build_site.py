@@ -128,8 +128,8 @@ GTAG_HEAD = """
 
 CONV_SCRIPT = r"""
 <script>
-/* Google Ads (09/10/2026): conversão no clique de qualquer link para /form/proposta. DESLIGADA enquanto ROTULO estiver vazio; para ativar, preencher com o rótulo da conversão (send_to = AW-18479570694/<rótulo>). */
-(function(){var ROTULO='';if(!ROTULO)return;
+/* Google Ads (09/10/2026): conversão no clique de qualquer link para /form/proposta. ATIVA desde 10/10/2026; esvaziar ROTULO desliga (send_to = AW-18479570694/<rótulo>). */
+(function(){var ROTULO='4-TPCPzV6ZcdEIa-3-tE';if(!ROTULO)return;
 document.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[href*="/form/proposta"]'):null;if(!a||typeof window.gtag!=='function')return;
 try{window.gtag('event','conversion',{send_to:'AW-18479570694/'+ROTULO})}catch(x){}},true);
 })();
