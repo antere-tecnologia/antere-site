@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
-import os
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from componentes import (SITE_CONFIG_JS, CONFIG_SCRIPT, SWITCH_SCRIPT, CONV_SCRIPT, WA_FLOAT, WA_SCRIPT,
+                         FORM_HEAD, FORM_BODY, FORM_JS)
 FORM = "https://raregoat-n8n.cloudfy.live/form/proposta?ref=site_institucional"
 SITE = "https://www.antere.com.br"
 CONTATO_WEBHOOK = "https://raregoat-n8n.cloudfy.live/webhook/site-contato"
 
 CSS = r"""
-<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png"><link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png"><link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png"><meta name="theme-color" content="#3A34D6">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png"><link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png"><link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png"><meta name="theme-color" content="#12131A">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&display=swap">
 <style>
@@ -126,16 +129,6 @@ GTAG_HEAD = """
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','AW-18479570694');</script>
 """
 
-CONV_SCRIPT = r"""
-<script>
-/* Google Ads (09/10/2026): conversão no clique de qualquer link para /form/proposta. ATIVA desde 10/10/2026; esvaziar ROTULO desliga (send_to = AW-18479570694/<rótulo>). */
-(function(){var ROTULO='4-TPCPzV6ZcdEIa-3-tE';if(!ROTULO)return;
-document.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[href*="/form/proposta"]'):null;if(!a||typeof window.gtag!=='function')return;
-try{window.gtag('event','conversion',{send_to:'AW-18479570694/'+ROTULO})}catch(x){}},true);
-})();
-</script>
-"""
-
 UTM_SCRIPT = r"""
 <script>
 /* UTM (28/09/2026): guarda utm_source, utm_medium, utm_campaign e gclid da chegada (sessionStorage, 1ª chegada da sessão) e acrescenta aos links de proposta (/form/proposta), mantendo o ref. */
@@ -151,7 +144,9 @@ for(var j=0;j<as.length;j++){try{var u=new URL(as[j].href,window.location.href);
 </script>
 """
 
-def page(title, description, active, body, extra_head="", extra_script="", standalone=True):
+def page(title, description, active, body, extra_head="", extra_script="", standalone=True, form_page=False):
+    # form_page: a página do formulário não leva o WhatsApp flutuante nem a conversão no clique
+    tail = FOOTER + UTM_SCRIPT + CONFIG_SCRIPT + SWITCH_SCRIPT + (WA_SCRIPT if form_page else CONV_SCRIPT + WA_FLOAT + WA_SCRIPT) + extra_script
     canon = SITE + "/" + ("" if active == "index.html" else active)
     head = (GTAG_HEAD + f"<title>{title}</title>\n<meta name=\"description\" content=\"{description}\">\n"
             f"<link rel=\"canonical\" href=\"{canon}\">\n"
@@ -159,9 +154,9 @@ def page(title, description, active, body, extra_head="", extra_script="", stand
             f"<meta property=\"og:title\" content=\"{title}\"><meta property=\"og:description\" content=\"{description}\"><meta property=\"og:url\" content=\"{canon}\">\n"
             f"<meta property=\"og:image\" content=\"{SITE}/assets/og-image.png\"><meta name=\"twitter:card\" content=\"summary_large_image\">\n"
             + CSS + extra_head)
-    content = head + nav(active) + body + FOOTER + UTM_SCRIPT + CONV_SCRIPT + extra_script
+    content = head + nav(active) + body + tail
     if standalone:
-        return "<!doctype html>\n<html lang=\"pt-BR\" data-theme=\"dark\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n" + head + "</head>\n<body>\n" + nav(active) + body + FOOTER + UTM_SCRIPT + CONV_SCRIPT + extra_script + "\n</body>\n</html>\n"
+        return "<!doctype html>\n<html lang=\"pt-BR\" data-theme=\"dark\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n" + head + "</head>\n<body>\n" + nav(active) + body + tail + "\n</body>\n</html>\n"
     return content
 
 # ---------------- HOME ----------------
@@ -497,7 +492,7 @@ SOBRE = f"""
     <p class="destaque">Se você chegou até aqui procurando simplificar como sua empresa recebe pagamentos, é exatamente aí que entramos.</p>
   </div>
   <div class="grid-3" style="margin-top:2.5rem">
-    <div class="card"><span class="eyebrow">Quem assina</span><h3>Fernanda Spahn</h3><p>Consultoria comercial. É quem assina as propostas e acompanha cada cliente até a ativação.</p></div>
+    <div class="card"><span class="eyebrow">Quem acompanha você</span><h3>Equipe comercial Antere</h3><p>Assina as propostas e acompanha cada cliente, da proposta até a ativação.</p></div>
   </div>
   <p style="margin-top:2rem"><a class="btn btn-primary" href="{FORM}">Quero minha proposta</a></p>
 </div></section>
@@ -726,6 +721,11 @@ pages = {
 for fn,(t,d,a,b,eh,es) in pages.items():
     open(fn,"w",encoding="utf-8").write(page(t,d,a,b,eh,es, standalone=(fn!="index.html")))
     print(fn, os.path.getsize(fn))
+
+# Formulário de proposta em 2 etapas (15/10/2026): fora do menu e do sitemap; só recebe visitantes com a chave ligada (site-config.js)
+open("proposta.html","w",encoding="utf-8").write(page("Quero minha proposta · Antere", "Peça sua proposta C6 Pay: crédito a partir de 1,84%, débito a partir de 0,82% e Pix grátis e ilimitado.", "proposta.html", FORM_BODY, FORM_HEAD, FORM_JS, form_page=True))
+open("site-config.js","w",encoding="utf-8").write(SITE_CONFIG_JS)
+print("proposta.html, site-config.js")
 
 open("sitemap.xml","w",encoding="utf-8").write('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "".join('  <url><loc>%s/%s</loc><changefreq>monthly</changefreq><priority>%s</priority></url>\n' % (SITE, "" if fn=="index.html" else fn, "1.0" if fn=="index.html" else "0.7") for fn in pages) + '</urlset>\n')
 open("robots.txt","w",encoding="utf-8").write("User-agent: *\nAllow: /\nSitemap: %s/sitemap.xml\n" % SITE)
