@@ -145,7 +145,8 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     await p.goto(BASE + '/?utm_source=google&utm_medium=cpc&utm_campaign=pagamento_integrado&gclid=XYZ');
     await p.goto(BASE + '/proposta.html?previa=1&ref=site_institucional');
     assert.strictEqual(await p.locator('#wa-float').count(), 0, 'botão flutuante dentro do formulário');
-    assert.match(await p.textContent('.pf-destaque'), /crédito a partir de 1,84%, débito a partir de 0,82% e Pix grátis e ilimitado/);
+    assert.strictEqual(await p.textContent('.pf-destaque'), 'C6 Pay: crédito a partir de 1,84% recebendo em 31 dias, débito a partir de 0,82% e Pix grátis e ilimitado.');
+    assert.strictEqual((await p.textContent('#g-procura label:first-of-type')).trim(), 'C6 Pay: crédito a partir de 1,84% recebendo em 31 dias, débito a partir de 0,82% e Pix grátis');
     await preencheE1(p, 'c6pay'); await p.click('#b1');
     await p.waitForSelector('#pf-e2:not([hidden])');
     const c1 = reqs[0].corpo;

@@ -723,7 +723,7 @@ for fn,(t,d,a,b,eh,es) in pages.items():
     print(fn, os.path.getsize(fn))
 
 # Formulário de proposta em 2 etapas (15/10/2026): fora do menu e do sitemap; só recebe visitantes com a chave ligada (site-config.js)
-open("proposta.html","w",encoding="utf-8").write(page("Quero minha proposta · Antere", "Peça sua proposta C6 Pay: crédito a partir de 1,84%, débito a partir de 0,82% e Pix grátis e ilimitado.", "proposta.html", FORM_BODY, FORM_HEAD, FORM_JS, form_page=True))
+open("proposta.html","w",encoding="utf-8").write(page("Quero minha proposta · Antere", "Peça sua proposta C6 Pay: crédito a partir de 1,84% recebendo em 31 dias, débito a partir de 0,82% e Pix grátis e ilimitado.", "proposta.html", FORM_BODY, FORM_HEAD, FORM_JS, form_page=True))
 open("site-config.js","w",encoding="utf-8").write(SITE_CONFIG_JS)
 print("proposta.html, site-config.js")
 
