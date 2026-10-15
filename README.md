@@ -46,3 +46,34 @@ Pronto e **desligado**. Será ligado depois da validação da conversão do Goog
 - **Ligar:** trocar para `window.ANTERE_COOKIES = true;` em `public/site-config.js` e em `SITE_CONFIG_JS` (`_src/componentes.py`); no `testes/site.test.js`, trocar o teste "cookies: site-config.js publicado com a chave do aviso desligada" para conferir `true` e o teste "cookies desligado" para usar `cookies: false` simulado; rodar os testes e gravar na `main`. Atenção: com o aviso ligado, só entram no Google Ads as conversões de quem aceitou.
 - **Voltar:** trocar de novo para `false` nos dois lugares e gravar na `main`.
 - **Testes:** `testes/site.test.js` confere que, desligado, nada muda (a tag carrega uma vez em cada uma das 11 páginas sem clique, sem faixa, sem link, sem nada guardado, WhatsApp na posição de sempre) e, ligado (simulado), a faixa, o link da política, a tag só depois do aceite, o "Recusar" guardado e o "Preferências de cookies".
+
+### Proposta: Consent Mode v2 do Google (16/10/2026, não publicada)
+
+Proposta para quando o aviso de cookies for ligado: em vez de bloquear a tag inteira de quem recusa, usar o modo de consentimento do Google (Consent Mode v2, "modo avançado"). Está pronta em `propostas/consent-mode-v2.patch` (gerador, as 11 páginas de `public/`, `site-config.js` e testes), testada e **não aplicada**: o site no ar continua com a forma descrita acima.
+
+**Como funciona com a proposta (só com `ANTERE_COOKIES = true`; desligado, nada muda e nenhum comando de consentimento é enviado):**
+- A tag do Google Ads carrega em toda visita. Antes do `config`, o site envia `gtag('consent', 'default', …)` com `ad_storage`, `ad_user_data` e `ad_personalization` em `denied` (ou `granted` para quem já aceitou antes) e liga `ads_data_redaction`.
+- "Aceitar" envia `gtag('consent', 'update', …)` com os três em `granted`; "Recusar" (ou mudar de ideia em "Preferências de cookies") envia os três em `denied`. A escolha continua em `localStorage` (`antere_cookies`).
+- O texto da faixa muda para: "Usamos cookies do Google Ads para medir o resultado dos nossos anúncios. Sem o seu aceite, nenhum cookie de anúncio é gravado e o Google recebe só sinais sem identificação. Saiba mais na Política de Privacidade."
+
+**Diferença entre as duas formas:**
+
+| | Forma atual (bloqueio da tag) | Consent Mode v2 (proposta) |
+|---|---|---|
+| Quem aceita | tag carrega, cookies e conversões normais | igual |
+| Quem recusa ou ignora a faixa | a tag não carrega; nada vai ao Google | a tag carrega sem gravar cookies de anúncio; envia ao Google sinais sem cookies (o estado do consentimento e dados técnicos do acesso, sem identificador de anúncio) |
+| Conversões de quem recusa | perdidas, sem estimativa | não contadas uma a uma, mas o Google estima por modelagem e soma às conversões da conta |
+| Equivale, no vocabulário do Google, a | modo básico | modo avançado |
+
+**Impacto esperado na contagem de conversões:**
+- **Forma atual:** a contagem passa a ser só das conversões de quem aceitou. Ela cai na proporção de quem recusa ou não responde à faixa, e os lances automáticos do Google Ads recebem menos sinal.
+- **Consent Mode v2:** as conversões de quem aceitou continuam iguais (observadas). Para quem recusou, o Google Ads acrescenta conversões **modeladas** (estimadas), que aparecem somadas na coluna de conversões, sem detalhe por clique. O total tende a ficar mais perto do real.
+- **Ressalva de volume:** a modelagem só entra quando a conta tem volume suficiente. Pela documentação do Google, a referência é da ordem de 700 cliques em anúncios em 7 dias por país e domínio; conferir na conta (Metas → Conversões → diagnóstico do modo de consentimento). Abaixo disso, a contagem fica parecida com a da forma atual, só com as conversões de quem aceitou.
+- O Google divulga uma recuperação média, por modelagem, de boa parte das conversões perdidas por recusa (na casa de dois terços), mas isso é média do Google, não garantia para esta conta.
+- Em qualquer das duas formas, a conversão que hoje conta no clique de todo visitante vai cair em relação aos números de hoje assim que o aviso for ligado.
+
+**Pontos para decidir antes de aplicar:**
+- **LGPD:** no modo avançado, a tag fala com o Google mesmo sem aceite (sem cookies e sem identificador de anúncio). A Política de Privacidade precisa dizer isso. Sugestão de texto para a linha do Google Ads (seção 5): "Nosso site usa a tag do Google Ads para medir o desempenho dos nossos anúncios. Os cookies de anúncios só são gravados se você aceitar no aviso de cookies; sem o aceite, a tag envia ao Google apenas sinais sem cookies e sem identificador de anúncio, usados para estimar resultados de forma agregada. Você pode mudar sua escolha a qualquer momento em "Preferências de cookies", no rodapé do site." Vale a validação do Rodrigo (e, se houver, do jurídico).
+- **`url_passthrough`** (levar o `gclid` pelos links internos quando os cookies são negados) **não** está na proposta: ele acrescenta parâmetros aos links do site. Pode ser avaliado depois, se a modelagem não entrar por falta de volume.
+
+**Para aplicar (no dia de ligar o aviso):** `git apply propostas/consent-mode-v2.patch`, conferir com `git diff`, trocar `ANTERE_COOKIES` para `true` (ver "Ligar" acima), atualizar a Política de Privacidade, rodar `NODE_PATH=$(npm root -g) node testes/site.test.js` e gravar na `main`. Se o patch não aplicar porque as páginas mudaram, refazer a partir de `_src/componentes.py` (funções `gtag_head` e `COOKIE_SCRIPT`), que concentram a mudança.
