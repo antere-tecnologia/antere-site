@@ -4,7 +4,7 @@
 # antere-automacao/docs/contrato_formulario_site.md.
 
 WHATSAPP_NUMERO = "5511955032670"  # atendimento com IA (o mesmo "WhatsApp comercial" da página de contato e da Campanha TEF)
-WHATSAPP_MSG = "Olá! Vim pelo site e quero saber sobre o C6 Pay."
+WHATSAPP_MSG = "Olá! Vim pelo site da Antere e quero saber mais sobre as soluções."
 WEBHOOK_ETAPA1 = "https://raregoat-n8n.cloudfy.live/webhook/site-proposta-etapa1"
 WEBHOOK_ETAPA2 = "https://raregoat-n8n.cloudfy.live/webhook/site-proposta-etapa2"
 FORM_ANTIGO = "https://raregoat-n8n.cloudfy.live/form/proposta?ref=site_institucional"

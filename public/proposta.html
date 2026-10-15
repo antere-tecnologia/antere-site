@@ -275,7 +275,7 @@ for(var i=0;i<as.length;i++){try{var u=new URL(as[i].href,window.location.href);
 /* WhatsApp (15/10/2026): links com data-wa levam ao atendimento com IA com a mensagem padrão e a origem (UTM) da visita;
    o clique em qualquer link do WhatsApp vira o evento whatsapp_click no Google Ads, sem conversão. O botão flutuante some
    quando estaria por cima de um botão de proposta. */
-(function(){var NUM='5511955032670',MSG='Olá! Vim pelo site e quero saber sobre o C6 Pay.',g=null,q=null;
+(function(){var NUM='5511955032670',MSG='Olá! Vim pelo site da Antere e quero saber mais sobre as soluções.',g=null,q=null;
 try{g=JSON.parse(window.sessionStorage.getItem('antere_utm')||'null')}catch(e){g=null}
 try{q=new URLSearchParams(window.location.search)}catch(e){q=null}
 function v(k){return String((q&&q.get(k))||(g&&g[k])||'').slice(0,100)}

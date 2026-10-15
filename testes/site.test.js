@@ -175,6 +175,7 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     assert.strictEqual(await p.textContent('#v-email'), 'maria@empresa.com.br');
     assert.match(await p.textContent('#t-fim'), /Spam e Promoções/);
     assert.strictEqual(await p.textContent('#pf-fim a[data-wa]'), 'Tirar dúvidas no WhatsApp');
+    for (const sel of ['#pf-e1 a[data-wa]', '#pf-fim a[data-wa]']) assert.strictEqual(new URL(await p.getAttribute(sel, 'href')).searchParams.get('text'), 'Olá! Vim pelo site da Antere e quero saber mais sobre as soluções.\n\nOrigem: google / cpc / pagamento_integrado', sel);
     assert.strictEqual((await eventos(p, 'conversion')).length, 1, 'a etapa 2 não conta outra conversão');
     await ctx.close();
   });
@@ -226,14 +227,14 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
       assert.strictEqual((await f.textContent()).trim(), 'Fale com a gente');
       const u = new URL(await f.getAttribute('href'));
       assert.strictEqual(u.origin + u.pathname, 'https://wa.me/5511955032670');
-      assert.strictEqual(u.searchParams.get('text'), 'Olá! Vim pelo site e quero saber sobre o C6 Pay.\n\nOrigem: google / cpc / pagamento_integrado', pg);
+      assert.strictEqual(u.searchParams.get('text'), 'Olá! Vim pelo site da Antere e quero saber mais sobre as soluções.\n\nOrigem: google / cpc / pagamento_integrado', pg);
       await f.click();
       const ev = await eventos(p, 'whatsapp_click'); assert.strictEqual(ev.length, 1, pg); assert.strictEqual(ev[0].local, 'flutuante'); assert.strictEqual(ev[0].utm_campaign, 'pagamento_integrado');
       assert.strictEqual((await eventos(p, 'conversion')).length, 0, pg);
       await p.close();
     }
     const p = await ctx.newPage(); await p.goto(BASE + '/sobre.html');
-    assert.strictEqual(new URL(await p.getAttribute('#wa-float', 'href')).searchParams.get('text'), 'Olá! Vim pelo site e quero saber sobre o C6 Pay.');
+    assert.strictEqual(new URL(await p.getAttribute('#wa-float', 'href')).searchParams.get('text'), 'Olá! Vim pelo site da Antere e quero saber mais sobre as soluções.');
     await ctx.close();
   });
 
