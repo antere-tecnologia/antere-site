@@ -30,20 +30,20 @@ async function t(nome, f) {
 }
 
 // Contexto com o site servido de public/ e tudo de fora bloqueado. chave: undefined = site-config.js real; true/false = simulado.
-async function contexto(b, { chave, webhooks, viewport } = {}) {
+async function contexto(b, { chave, cookies, webhooks, viewport } = {}) {
   const ctx = await b.newContext({ viewport: viewport || { width: 1280, height: 900 } });
-  const reqs = [];
+  const reqs = [], gtagJs = [];
   await ctx.route('**/*', async (r) => {
     const u = new URL(r.request().url());
     if (u.origin === BASE) {
-      if (u.pathname === '/site-config.js' && chave !== undefined) return r.fulfill({ body: 'window.ANTERE_FORM_NOVO = ' + chave + ';', contentType: 'application/javascript' });
+      if (u.pathname === '/site-config.js' && (chave !== undefined || cookies !== undefined)) return r.fulfill({ body: 'window.ANTERE_FORM_NOVO = ' + (chave === true) + ';\nwindow.ANTERE_COOKIES = ' + (cookies === true) + ';', contentType: 'application/javascript' });
       let f = u.pathname.slice(1) || 'index.html';
       const arq = path.join(PUB, f);
       if (!fs.existsSync(arq) || fs.statSync(arq).isDirectory()) return r.fulfill({ status: 404, body: fs.readFileSync(path.join(PUB, '404.html')), contentType: 'text/html' });
       const tipo = f.endsWith('.js') ? 'application/javascript' : f.endsWith('.png') ? 'image/png' : 'text/html';
       return r.fulfill({ body: fs.readFileSync(arq), contentType: tipo });
     }
-    if (u.hostname === 'www.googletagmanager.com') return r.fulfill({ body: '', contentType: 'application/javascript' });
+    if (u.hostname === 'www.googletagmanager.com') { gtagJs.push(r.request().frame().url()); return r.fulfill({ body: '', contentType: 'application/javascript' }); }
     if (u.href.startsWith(E1) || u.href.startsWith(E2)) {
       const corpo = JSON.parse(r.request().postData() || '{}'); reqs.push({ url: u.href, corpo });
       const resp = webhooks ? webhooks(u.href, corpo) : { status: 503, body: { ok: false, erro: 'indisponivel' } };
@@ -51,7 +51,7 @@ async function contexto(b, { chave, webhooks, viewport } = {}) {
     }
     return r.abort();
   });
-  return { ctx, reqs };
+  return { ctx, reqs, gtagJs };
 }
 const eventos = (p, nome) => p.evaluate((n) => (window.dataLayer || []).filter(a => a[0] === 'event' && a[1] === n).map(a => a[2] || {}), nome);
 const semNavegar = (p) => p.evaluate(() => document.addEventListener('click', e => { if (e.target.closest('a')) e.preventDefault(); }));
@@ -256,6 +256,54 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
       await p.close();
     }
     assert.ok(checagens > 100 && ocultou > 0, checagens + ' ' + ocultou);
+    await ctx.close();
+  });
+
+  // ---------------- aviso de cookies (chave ANTERE_COOKIES) ----------------
+  await t('cookies: site-config.js publicado com a chave do aviso desligada', async () => {
+    assert.match(fs.readFileSync(path.join(PUB, 'site-config.js'), 'utf8'), /^window\.ANTERE_COOKIES = false;$/m);
+  });
+  await t('cookies desligado: nada muda (tag carrega em toda página sem clique, sem faixa, sem link de preferências, nada guardado)', async () => {
+    const { ctx, gtagJs } = await contexto(b, { viewport: { width: 390, height: 844 } });
+    for (const pg of [...PAGINAS, ...LEGAIS, 'proposta.html?previa=1']) {
+      const p = await ctx.newPage(); const antes = gtagJs.length;
+      await p.goto(BASE + '/' + pg); await p.waitForTimeout(100);
+      assert.strictEqual(await p.evaluate(() => window.ANTERE_COOKIES), false, pg);
+      assert.strictEqual(gtagJs.length - antes, 1, 'gtag.js em ' + pg);
+      assert.ok(await p.evaluate(() => window.dataLayer.some(a => a[0] === 'config' && a[1] === 'AW-18479570694')), pg);
+      assert.strictEqual(await p.locator('#cookie-faixa, #cookie-preferencias').count(), 0, pg);
+      assert.strictEqual(await p.evaluate(() => window.localStorage.getItem('antere_cookies')), null, pg);
+      assert.strictEqual(await p.evaluate(() => document.body.classList.contains('cookies-aberto')), false, pg);
+      if (await p.locator('#wa-float').count()) assert.strictEqual(await p.evaluate(() => getComputedStyle(document.getElementById('wa-float')).bottom), '16px', pg);
+      await p.close();
+    }
+    await ctx.close();
+  });
+  await t('cookies ligado (simulado): faixa com Aceitar/Recusar e link da política; sem aceite a tag não carrega; Recusar fica guardado', async () => {
+    const { ctx, gtagJs } = await contexto(b, { cookies: true, viewport: { width: 390, height: 844 } });
+    const p = await ctx.newPage(); await p.goto(BASE + '/'); await p.waitForTimeout(100);
+    assert.ok(await p.isVisible('#cookie-faixa'));
+    assert.strictEqual(await p.getAttribute('#cookie-faixa a', 'href'), 'https://legal.antere.com.br/privacidade.html');
+    assert.strictEqual(await p.textContent('#cookie-aceitar'), 'Aceitar'); assert.strictEqual(await p.textContent('#cookie-recusar'), 'Recusar');
+    assert.strictEqual(gtagJs.length, 0, 'a tag carregou antes do aceite');
+    const fb = await p.evaluate(() => document.getElementById('wa-float').getBoundingClientRect().bottom), cf = await p.evaluate(() => document.getElementById('cookie-faixa').getBoundingClientRect().top);
+    assert.ok(fb <= cf, 'WhatsApp por baixo da faixa');
+    await p.click('#cookie-recusar');
+    assert.ok(await p.isHidden('#cookie-faixa')); assert.strictEqual(JSON.parse(await p.evaluate(() => localStorage.getItem('antere_cookies'))).escolha, 'recusado');
+    for (const pg of ['sobre.html', 'proposta.html?previa=1', 'legal/termos.html']) { await p.goto(BASE + '/' + pg); await p.waitForTimeout(100); assert.strictEqual(await p.locator('#cookie-faixa').count(), 0, pg); }
+    assert.strictEqual(gtagJs.length, 0, 'a tag carregou depois do Recusar');
+    await ctx.close();
+  });
+  await t('cookies ligado (simulado): Aceitar carrega a tag na hora e nas próximas páginas; "Preferências de cookies" reabre a faixa', async () => {
+    const { ctx, gtagJs } = await contexto(b, { cookies: true });
+    const p = await ctx.newPage(); await p.goto(BASE + '/calculadora.html'); await p.waitForTimeout(100);
+    assert.strictEqual(gtagJs.length, 0); await p.click('#cookie-aceitar'); await p.waitForTimeout(100);
+    assert.strictEqual(gtagJs.length, 1); assert.ok(await p.isHidden('#cookie-faixa'));
+    await p.goto(BASE + '/contato.html'); await p.waitForTimeout(100);
+    assert.strictEqual(gtagJs.length, 2); assert.strictEqual(await p.locator('#cookie-faixa').count(), 0);
+    await p.click('#cookie-preferencias'); assert.ok(await p.isVisible('#cookie-faixa'));
+    await p.click('#cookie-recusar'); assert.strictEqual(JSON.parse(await p.evaluate(() => localStorage.getItem('antere_cookies'))).escolha, 'recusado');
+    await p.goto(BASE + '/index.html'); await p.waitForTimeout(100); assert.strictEqual(gtagJs.length, 2, 'depois de recusar, a tag não carrega mais');
     await ctx.close();
   });
 

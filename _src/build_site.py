@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from componentes import (SITE_CONFIG_JS, CONFIG_SCRIPT, SWITCH_SCRIPT, CONV_SCRIPT, WA_FLOAT, WA_SCRIPT,
+from componentes import (SITE_CONFIG_JS, GTAG_HEAD, COOKIE_SCRIPT, SWITCH_SCRIPT, CONV_SCRIPT, WA_FLOAT, WA_SCRIPT,
                          FORM_HEAD, FORM_BODY, FORM_JS)
 FORM = "https://raregoat-n8n.cloudfy.live/form/proposta?ref=site_institucional"
 SITE = "https://www.antere.com.br"
@@ -123,12 +123,6 @@ FOOTER = f"""
 </script>
 """
 
-GTAG_HEAD = """
-<!-- Google Ads (09/10/2026): tag global gtag.js, ID AW-18479570694 -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=AW-18479570694"></script>
-<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','AW-18479570694');</script>
-"""
-
 UTM_SCRIPT = r"""
 <script>
 /* UTM (28/09/2026): guarda utm_source, utm_medium, utm_campaign e gclid da chegada (sessionStorage, 1ª chegada da sessão) e acrescenta aos links de proposta (/form/proposta), mantendo o ref. */
@@ -146,7 +140,7 @@ for(var j=0;j<as.length;j++){try{var u=new URL(as[j].href,window.location.href);
 
 def page(title, description, active, body, extra_head="", extra_script="", standalone=True, form_page=False):
     # form_page: a página do formulário não leva o WhatsApp flutuante nem a conversão no clique
-    tail = FOOTER + UTM_SCRIPT + CONFIG_SCRIPT + SWITCH_SCRIPT + (WA_SCRIPT if form_page else CONV_SCRIPT + WA_FLOAT + WA_SCRIPT) + extra_script
+    tail = FOOTER + UTM_SCRIPT + SWITCH_SCRIPT + (WA_SCRIPT if form_page else CONV_SCRIPT + WA_FLOAT + WA_SCRIPT) + COOKIE_SCRIPT + extra_script
     canon = SITE + "/" + ("" if active == "index.html" else active)
     head = (GTAG_HEAD + f"<title>{title}</title>\n<meta name=\"description\" content=\"{description}\">\n"
             f"<link rel=\"canonical\" href=\"{canon}\">\n"

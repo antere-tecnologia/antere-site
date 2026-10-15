@@ -11,7 +11,7 @@ FORM_ANTIGO = "https://raregoat-n8n.cloudfy.live/form/proposta?ref=site_instituc
 URL_PDVET = "https://portal.pdvet.com.br/cadastro"
 ADS_SEND_TO = "AW-18479570694/4-TPCPzV6ZcdEIa-3-tE"
 
-# ---- A CHAVE -------------------------------------------------------------------------------------------------------
+# ---- AS CHAVES -------------------------------------------------------------------------------------------------------
 # public/site-config.js (fora de assets/, que tem cache de 1 ano). false = desligada; true = ligada. Ver o README.
 SITE_CONFIG_JS = """/* Chave do formulário de proposta em 2 etapas (antere-site, README, seção "Chave do formulário").
    false: os botões "Quero minha proposta" levam ao formulário antigo do n8n (/form/proposta) e a conversão do Google Ads
@@ -19,10 +19,12 @@ SITE_CONFIG_JS = """/* Chave do formulário de proposta em 2 etapas (antere-site
    true:  os botões levam a /proposta.html (formulário em 2 etapas) e a conversão dispara no envio com sucesso da etapa 1.
    Só ligar depois de os webhooks site-proposta-etapa1/2 estarem publicados e do teste de ponta a ponta. */
 window.ANTERE_FORM_NOVO = false;
-"""
 
-CONFIG_SCRIPT = """
-<script src="/site-config.js"></script>
+/* Chave do aviso de cookies (LGPD), README, seção "Aviso de cookies".
+   false: a tag do Google Ads carrega em toda visita, como antes, e não aparece aviso.
+   true:  aparece a faixa "Aceitar" / "Recusar"; a tag só carrega depois do "Aceitar" e a escolha fica guardada no navegador.
+   Só ligar depois da validação da conversão do Google Ads. */
+window.ANTERE_COOKIES = false;
 """
 
 SWITCH_SCRIPT = r"""
@@ -49,7 +51,7 @@ try{window.gtag('event','conversion',{send_to:'AW-18479570694/'+ROTULO})}catch(x
 
 WA_FLOAT = """
 <style>
-.wa-float{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:30;display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.05rem .7rem .85rem;border-radius:999px;background:#0F7B40;color:#fff;font:600 .95rem/1.1 'Sora',ui-sans-serif,system-ui,sans-serif;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.25);transition:opacity .15s ease,transform .15s ease}
+.wa-float{position:fixed;right:16px;bottom:calc(16px + var(--faixa-cookies,0px) + env(safe-area-inset-bottom,0px));z-index:30;display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.05rem .7rem .85rem;border-radius:999px;background:#0F7B40;color:#fff;font:600 .95rem/1.1 'Sora',ui-sans-serif,system-ui,sans-serif;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.25);transition:opacity .15s ease,transform .15s ease}
 .wa-float:hover{background:#0B6534}
 .wa-float:focus-visible{outline:3px solid #D9822B;outline-offset:2px}
 .wa-float svg{width:22px;height:22px;flex:none}
@@ -85,6 +87,57 @@ window.addEventListener('scroll',agenda,{passive:true});window.addEventListener(
 })();
 </script>
 """.replace('__NUM__', WHATSAPP_NUMERO).replace('__MSG__', WHATSAPP_MSG)
+
+# <head>: site-config.js e a tag do Google Ads. A tag carrega na hora com ANTERE_COOKIES desligada (como antes de 15/10) e, com
+# ela ligada, só depois do "Aceitar" (escolha em localStorage "antere_cookies"). As legais usam o endereço absoluto do site-config.js,
+# porque também são servidas em legal.antere.com.br.
+ADS_ID = "AW-18479570694"
+def gtag_head(config_src="/site-config.js"):
+    return """<script src="%s"></script>
+<!-- Google Ads (09/10/2026): tag global gtag.js, ID %s. 15/10/2026: carregada por script, para obedecer ao aviso de cookies quando ligado -->
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','%s');
+(function(){var feito=false;window.antereCarregarAds=function(){if(feito)return;feito=true;var t=document.createElement('script');t.async=true;t.src='https://www.googletagmanager.com/gtag/js?id=%s';document.head.appendChild(t)};
+if(window.ANTERE_COOKIES!==true){window.antereCarregarAds();return}
+var c=null;try{c=JSON.parse(window.localStorage.getItem('antere_cookies')||'null')}catch(e){c=null}
+if(c&&c.escolha==='aceito')window.antereCarregarAds()})();</script>
+""" % (config_src, ADS_ID, ADS_ID, ADS_ID)
+GTAG_HEAD = gtag_head()
+GTAG_HEAD_LEGAL = gtag_head("https://www.antere.com.br/site-config.js")
+
+COOKIE_SCRIPT = r"""
+<style>
+.cookie-faixa{position:fixed;left:0;right:0;bottom:0;z-index:40;background:#1C1E2A;color:#F1EFEA;border-top:1px solid #2C2F3E;box-shadow:0 -6px 20px rgba(0,0,0,.25);padding:1rem 16px calc(1rem + env(safe-area-inset-bottom,0px));font:400 .95rem/1.45 'Source Sans 3',ui-sans-serif,system-ui,sans-serif}
+.cookie-faixa .cf-in{max-width:1120px;margin:0 auto;display:flex;flex-wrap:wrap;gap:.75rem 1.25rem;align-items:center;justify-content:space-between}
+.cookie-faixa p{margin:0;flex:1 1 320px}
+.cookie-faixa a{color:#A3A0F5}
+.cookie-faixa .cf-bt{display:flex;gap:.6rem;flex:0 0 auto}
+.cookie-faixa button{font:600 .95rem/1 'Sora',ui-sans-serif,system-ui,sans-serif;min-height:44px;padding:.65rem 1.2rem;border-radius:999px;border:2px solid #7B76F0;background:#7B76F0;color:#0F1020;cursor:pointer}
+.cookie-faixa button:focus-visible{outline:3px solid #D9822B;outline-offset:2px}
+@media (max-width:520px){.cookie-faixa .cf-bt{flex:1 1 100%}.cookie-faixa button{flex:1}}
+body.cookies-aberto{padding-bottom:calc(var(--faixa-cookies,0px) + 16px)}
+@media print{.cookie-faixa{display:none}}
+</style>
+<script>
+/* Aviso de cookies (15/10/2026), atrás da chave ANTERE_COOKIES (site-config.js). Desligada: não faz nada.
+   Ligada: sem escolha guardada, mostra a faixa; "Aceitar" carrega a tag do Google Ads (antereCarregarAds, no <head>) e "Recusar" não;
+   a escolha fica em localStorage "antere_cookies". O link "Preferências de cookies" no rodapé reabre a faixa. */
+(function(){if(window.ANTERE_COOKIES!==true)return;var K='antere_cookies',f=null;
+function le(){try{return JSON.parse(window.localStorage.getItem(K)||'null')}catch(e){return null}}
+function grava(v){try{window.localStorage.setItem(K,JSON.stringify({escolha:v,em:new Date().toISOString()}))}catch(e){}}
+function altura(){document.documentElement.style.setProperty('--faixa-cookies',(f&&!f.hidden?f.offsetHeight:0)+'px')}
+function fecha(){if(f)f.hidden=true;document.body.classList.remove('cookies-aberto');altura()}
+function abre(){if(!f){f=document.createElement('div');f.className='cookie-faixa';f.id='cookie-faixa';f.setAttribute('role','region');f.setAttribute('aria-label','Aviso de cookies');
+ f.innerHTML='<div class="cf-in"><p>Usamos cookies e a tag do Google Ads só para medir o resultado dos nossos anúncios. Você escolhe se aceita. Saiba mais na <a href="https://legal.antere.com.br/privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</p><div class="cf-bt"><button type="button" id="cookie-recusar">Recusar</button><button type="button" id="cookie-aceitar">Aceitar</button></div></div>';
+ document.body.appendChild(f);
+ f.querySelector('#cookie-aceitar').addEventListener('click',function(){grava('aceito');fecha();if(window.antereCarregarAds)window.antereCarregarAds()});
+ f.querySelector('#cookie-recusar').addEventListener('click',function(){grava('recusado');fecha()});
+ window.addEventListener('resize',altura)}
+ f.hidden=false;document.body.classList.add('cookies-aberto');altura()}
+var cols=document.querySelector('footer .cols');if(cols){var a=document.createElement('a');a.href='#';a.id='cookie-preferencias';a.textContent='Preferências de cookies';a.addEventListener('click',function(e){e.preventDefault();abre()});cols.appendChild(a)}
+if(!le())abre();
+})();
+</script>
+"""
 
 # ---- FORMULÁRIO (proposta.html) -------------------------------------------------------------------------------------
 FORM_HEAD = """<meta name="robots" content="noindex">
