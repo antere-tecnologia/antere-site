@@ -16,6 +16,7 @@ const SRC = path.join(__dirname, '..', '_src');
 const BASE = 'https://www.antere.com.br';
 const E1 = 'https://raregoat-n8n.cloudfy.live/webhook/site-proposta-etapa1';
 const E2 = 'https://raregoat-n8n.cloudfy.live/webhook/site-proposta-etapa2';
+const DADOS = 'https://raregoat-n8n.cloudfy.live/webhook/form-proposta-dados';
 const SEND_TO = 'AW-18479570694/4-TPCPzV6ZcdEIa-3-tE';
 const UTM = '?utm_source=google&utm_medium=cpc&utm_campaign=pagamento_integrado';
 const PAGINAS = ['index.html', 'calculadora.html', 'como-funciona.html', 'contato.html', 'sobre.html', 'solucoes.html', '404.html'];
@@ -30,7 +31,7 @@ async function t(nome, f) {
 }
 
 // Contexto com o site servido de public/ e tudo de fora bloqueado. chave: undefined = site-config.js real; true/false = simulado.
-async function contexto(b, { chave, cookies, webhooks, viewport } = {}) {
+async function contexto(b, { chave, cookies, webhooks, dados, viewport } = {}) {
   const ctx = await b.newContext({ viewport: viewport || { width: 1280, height: 900 } });
   const reqs = [], gtagJs = [];
   await ctx.route('**/*', async (r) => {
@@ -44,6 +45,11 @@ async function contexto(b, { chave, cookies, webhooks, viewport } = {}) {
       return r.fulfill({ body: fs.readFileSync(arq), contentType: tipo });
     }
     if (u.hostname === 'www.googletagmanager.com') { gtagJs.push(r.request().frame().url()); return r.fulfill({ body: '', contentType: 'application/javascript' }); }
+    if (u.href.startsWith(DADOS)) {
+      reqs.push({ url: u.href, metodo: r.request().method() });
+      const resp = dados ? dados(u.searchParams) : { status: 404, body: { ok: false } };
+      return r.fulfill({ status: resp.status, body: JSON.stringify(resp.body), contentType: 'application/json' });
+    }
     if (u.href.startsWith(E1) || u.href.startsWith(E2)) {
       const corpo = JSON.parse(r.request().postData() || '{}'); reqs.push({ url: u.href, corpo });
       const resp = webhooks ? webhooks(u.href, corpo) : { status: 503, body: { ok: false, erro: 'indisponivel' } };
@@ -216,6 +222,64 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     assert.strictEqual(await p.getAttribute('#f-email', 'aria-invalid'), 'true'); assert.strictEqual(await p.getAttribute('#f-cnpj', 'aria-invalid'), 'true');
     modo = 503; await p.click('#b1'); await p.waitForFunction(() => document.getElementById('s1').textContent.includes('manutenção'));
     assert.strictEqual((await eventos(p, 'conversion')).length, 0); assert.ok(await p.isVisible('#pf-e1'));
+    await ctx.close();
+  });
+
+  // ---------------- e-mail (proposta_formulario_email_1610) ----------------
+  const LID = 'c'.repeat(24), TK = 'd'.repeat(32);
+  await t('e-mail: "Você quis dizer …?" para erros comuns (gmial.com, gmail.con, hotmial.com, outlok.com, gmail.com.br); nada para domínio de empresa', async () => {
+    const { ctx } = await contexto(b); const p = await ctx.newPage(); await p.goto(BASE + '/proposta.html?previa=1');
+    const casos = { 'maria@gmial.com': 'maria@gmail.com', 'maria@gmail.con': 'maria@gmail.com', 'ana@hotmial.com': 'ana@hotmail.com', 'ana@outlok.com': 'ana@outlook.com', 'jo@gmail.com.br': 'jo@gmail.com', 'jo@yaho.com.br': 'jo@yahoo.com.br' };
+    for (const [de, para] of Object.entries(casos)) { await p.fill('#f-email', de); await p.locator('#f-email').blur(); assert.ok(await p.isVisible('#sug-email'), de); assert.strictEqual(await p.textContent('#sug-texto'), para, de); }
+    for (const ok of ['maria@gmail.com', 'compras@empresaexemplo.com.br', 'jo@yahoo.com.br', 'x@terra.com.br', 'jo@uol.com']) { await p.fill('#f-email', ok); await p.locator('#f-email').blur(); assert.ok(await p.isHidden('#sug-email'), ok); }
+    await ctx.close();
+  });
+  await t('e-mail: a sugestão não troca sozinha; envio com erro comum espera a resposta; "Sim, trocar" e "Não, está certo" seguem', async () => {
+    const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP, 'pdvet') }); const p = await ctx.newPage();
+    await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, 'pdvet'); await p.fill('#f-email', 'maria@gmial.com');
+    await p.click('#b1'); assert.ok(await p.isVisible('#sug-email')); assert.strictEqual(reqs.length, 0, 'enviou sem a resposta do lead');
+    assert.strictEqual(await p.inputValue('#f-email'), 'maria@gmial.com', 'trocou sozinho');
+    await p.click('#sug-sim'); assert.strictEqual(await p.inputValue('#f-email'), 'maria@gmail.com');
+    await p.click('#b1'); await p.waitForSelector('#pf-pdvet:not([hidden])'); assert.strictEqual(reqs[0].corpo.email, 'maria@gmail.com');
+    assert.ok(!('email_alterado' in reqs[0].corpo) && !('lead_id_cadastro' in reqs[0].corpo), 'campos de cadastro sem link de lote');
+    await ctx.close();
+    const x = await contexto(b, { webhooks: etapa1Ok(EMP, 'pdvet') }); const p2 = await x.ctx.newPage();
+    await p2.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p2, 'pdvet'); await p2.fill('#f-email', 'jo@gmial.com');
+    await p2.click('#b1'); await p2.click('#sug-nao'); await p2.click('#b1'); await p2.waitForSelector('#pf-pdvet:not([hidden])');
+    assert.strictEqual(x.reqs[0].corpo.email, 'jo@gmial.com');
+    await x.ctx.close();
+  });
+  await t('e-mail: 422 dominio_sem_email mostra "Esse endereço não recebe e-mail…" e a sugestão do servidor', async () => {
+    const { ctx, reqs } = await contexto(b, { webhooks: () => ({ status: 422, body: { ok: false, erro: 'validacao', erros: [{ campo: 'email', erro: 'dominio_sem_email', sugestao: 'empresa.com.br' }] } }) });
+    const p = await ctx.newPage(); await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, 'c6pay'); await p.fill('#f-email', 'compras@empesa.com.br'); await p.click('#b1');
+    await p.waitForFunction(() => document.getElementById('e-email').textContent.length > 0);
+    assert.strictEqual(await p.textContent('#e-email'), 'Esse endereço não recebe e-mail. Confira o que vem depois do @.');
+    assert.strictEqual(await p.getAttribute('#f-email', 'aria-invalid'), 'true');
+    assert.strictEqual(await p.textContent('#sug-texto'), 'compras@empresa.com.br'); assert.strictEqual(reqs.length, 1);
+    assert.strictEqual((await eventos(p, 'conversion')).length, 0);
+    await ctx.close();
+  });
+  await t('e-mail: link com lead_id e token abre com nome e e-mail cadastrados, limpa a URL e manda email_alterado', async () => {
+    const dados = (sp) => sp.get('lead_id') === LID && sp.get('token') === TK ? { status: 200, body: { email: 'contato@empresa.com.br', nome_contato: 'Carla Souza', empresa: 'EMPRESA EXEMPLO LTDA' } } : { status: 404, body: { ok: false } };
+    for (const [novo, alterado] of [[null, false], ['carla@gmail.com', true]]) {
+      const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP, 'pdvet'), dados }); const p = await ctx.newPage();
+      await p.goto(BASE + '/proposta.html?previa=1&utm_source=lote&lead_id=' + LID + '&token=' + TK);
+      await p.waitForFunction(() => document.getElementById('f-email').value !== '');
+      assert.strictEqual(await p.inputValue('#f-email'), 'contato@empresa.com.br'); assert.strictEqual(await p.inputValue('#f-nome'), 'Carla Souza');
+      const u = new URL(p.url()); assert.ok(!u.searchParams.has('lead_id') && !u.searchParams.has('token'), p.url()); assert.strictEqual(u.searchParams.get('utm_source'), 'lote');
+      assert.strictEqual(reqs[0].metodo, 'GET');
+      await p.type('#f-whatsapp', '11987654321'); await p.type('#f-cnpj', '11222333000181'); await p.fill('#f-caixas', '1'); await p.check('input[name=procura][value=pdvet]'); await p.check('#f-lgpd');
+      if (novo) await p.fill('#f-email', novo);
+      await p.click('#b1'); await p.waitForSelector('#pf-pdvet:not([hidden])');
+      const c = reqs[1].corpo;
+      assert.deepStrictEqual([c.lead_id_cadastro, c.token_cadastro, c.email_alterado, c.email, c.utm_source], [LID, TK, alterado, novo || 'contato@empresa.com.br', 'lote']);
+      if (lib) assert.ok(lib.validarEtapa1(c).ok);
+      await ctx.close();
+    }
+    const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP, 'pdvet'), dados }); const p = await ctx.newPage();
+    await p.goto(BASE + '/proposta.html?previa=1&lead_id=' + LID + '&token=' + 'e'.repeat(32)); await p.waitForTimeout(300);
+    assert.strictEqual(await p.inputValue('#f-email'), ''); await preencheE1(p, 'pdvet'); await p.click('#b1'); await p.waitForSelector('#pf-pdvet:not([hidden])');
+    assert.ok(!('lead_id_cadastro' in reqs[1].corpo), 'token inválido não manda os campos de cadastro');
     await ctx.close();
   });
 

@@ -7,6 +7,10 @@ WHATSAPP_NUMERO = "5511955032670"  # atendimento com IA (o mesmo "WhatsApp comer
 WHATSAPP_MSG = "Olá! Vim pelo site da Antere e quero saber mais sobre as soluções."
 WEBHOOK_ETAPA1 = "https://raregoat-n8n.cloudfy.live/webhook/site-proposta-etapa1"
 WEBHOOK_ETAPA2 = "https://raregoat-n8n.cloudfy.live/webhook/site-proposta-etapa2"
+# 16/10/2026 (proposta_formulario_email_1610 da Operação): dados do lead cadastrado, só leitura, com lead_id e token de uso único
+WEBHOOK_DADOS = "https://raregoat-n8n.cloudfy.live/webhook/form-proposta-dados"
+# Domínios comuns para a sugestão "Você quis dizer …?" (a mesma lista da Operação; distância de digitação até 2)
+DOMINIOS_COMUNS = ["gmail.com", "hotmail.com", "outlook.com", "live.com", "yahoo.com", "yahoo.com.br", "icloud.com", "uol.com.br", "bol.com.br", "terra.com.br"]
 FORM_ANTIGO = "https://raregoat-n8n.cloudfy.live/form/proposta?ref=site_institucional"
 URL_PDVET = "https://portal.pdvet.com.br/cadastro"
 ADS_SEND_TO = "AW-18479570694/4-TPCPzV6ZcdEIa-3-tE"
@@ -179,6 +183,9 @@ FORM_HEAD = """<meta name="robots" content="noindex">
 .pf .btn{white-space:normal;text-align:center;line-height:1.2}
 .pf .ok-marca{color:var(--petroleo);font-weight:600}
 .pf .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.pf .sugestao{background:var(--ambar-tint);border-left:4px solid var(--ambar);border-radius:10px;padding:.8rem .9rem;display:grid;gap:.6rem;color:var(--ink)}
+.pf .sugestao .acoes{grid-template-columns:auto auto;justify-content:start}
+.pf .sugestao .btn{min-height:44px;font-size:.95rem;padding:.55rem 1rem}
 .pf [hidden]{display:none!important}
 </style>
 """
@@ -194,7 +201,8 @@ FORM_BODY = r"""
   <form id="f1" novalidate>
     <div class="campo"><label for="f-nome">Nome completo</label><input id="f-nome" name="nome" type="text" autocomplete="name" maxlength="80" required><p class="erro" id="e-nome"></p></div>
     <div class="campo"><label for="f-whatsapp">WhatsApp</label><input id="f-whatsapp" name="whatsapp" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="(11) 91234-5678" maxlength="16" required><p class="erro" id="e-whatsapp"></p></div>
-    <div class="campo"><label for="f-email">E-mail</label><input id="f-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="120" required><span class="dica">A proposta chega neste e-mail.</span><p class="erro" id="e-email"></p></div>
+    <div class="campo"><label for="f-email">E-mail</label><input id="f-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="120" required><span class="dica">A proposta chega neste e-mail.</span><p class="erro" id="e-email"></p>
+      <div class="sugestao" id="sug-email" role="status" aria-live="polite" hidden><span>Você quis dizer <strong id="sug-texto"></strong>?</span><div class="acoes"><button class="btn btn-primary" type="button" id="sug-sim">Sim, trocar</button><button class="btn btn-ghost" type="button" id="sug-nao">Não, está certo</button></div></div></div>
     <div class="campo"><label for="f-cnpj">CNPJ</label><input id="f-cnpj" name="cnpj" type="text" inputmode="numeric" autocomplete="off" placeholder="00.000.000/0000-00" maxlength="18" required><p class="erro" id="e-cnpj"></p></div>
     <div class="campo"><label for="f-caixas">Nº de caixas</label><input id="f-caixas" name="caixas" type="number" inputmode="numeric" min="1" max="999" step="1" required><span class="dica">Quantos pontos de venda (caixas) a empresa tem.</span><p class="erro" id="e-caixas"></p></div>
     <fieldset class="campo" id="g-procura"><legend>O que você procura?</legend>
@@ -273,7 +281,7 @@ FORM_JS = r"""
 /* Formulário de proposta em 2 etapas (15/10/2026). Contrato: antere-automacao/docs/contrato_formulario_site.md.
    Com a chave desligada (site-config.js), a página manda o visitante ao formulário antigo; ?previa=1 abre mesmo assim (teste). */
 (function(){
-var E1='__E1__',E2='__E2__',ANTIGO='__ANTIGO__',PDVET='__PDVET__',SEND_TO='__SENDTO__',K='antere_form_site';
+var E1='__E1__',E2='__E2__',DADOS='__DADOS__',DOM=__DOM__,ANTIGO='__ANTIGO__',PDVET='__PDVET__',SEND_TO='__SENDTO__',K='antere_form_site';
 var q;try{q=new URLSearchParams(window.location.search)}catch(e){q=new URLSearchParams('')}
 var ORIG=['utm_source','utm_medium','utm_campaign','utm_term','utm_content','gclid','ref'];
 if(window.ANTERE_FORM_NOVO!==true&&q.get('previa')!=='1'){var u0=new URL(ANTIGO);ORIG.forEach(function(k){var v=q.get(k);if(v&&k!=='ref')u0.searchParams.set(k,v)});window.location.replace(u0.toString());return}
@@ -284,7 +292,7 @@ var st={};try{st=JSON.parse(window.sessionStorage.getItem(K)||'{}')||{}}catch(e)
 function salva(){try{window.sessionStorage.setItem(K,JSON.stringify(st))}catch(e){}}
 function mostra(id){['pf-e1','pf-pdvet','pf-e2','pf-fim'].forEach(function(x){$(x).hidden=(x!==id)});window.scrollTo(0,0);var h=$(id).querySelector('h1');if(h)h.focus({preventScroll:true})}
 var MSG={nome:{obrigatorio:'Informe seu nome completo.',invalido:'Informe seu nome completo.'},whatsapp:{obrigatorio:'Informe seu WhatsApp com DDD.',invalido:'Confira o WhatsApp: use o DDD e o número.'},
- email:{obrigatorio:'Informe seu e-mail.',invalido:'Confira o e-mail.'},cnpj:{obrigatorio:'Informe o CNPJ.',invalido:'Confira o CNPJ: os números não batem.'},
+ email:{obrigatorio:'Informe seu e-mail.',invalido:'Confira o e-mail.',dominio_sem_email:'Esse endereço não recebe e-mail. Confira o que vem depois do @.'},cnpj:{obrigatorio:'Informe o CNPJ.',invalido:'Confira o CNPJ: os números não batem.'},
  caixas:{obrigatorio:'Informe o número de caixas.',invalido:'Use um número de 1 a 999.'},procura:{obrigatorio:'Escolha o que você procura.',invalido:'Escolha o que você procura.'},
  consentimento_lgpd:{obrigatorio:'Para continuar, marque a concordância com o uso dos dados.',invalido:'Para continuar, marque a concordância com o uso dos dados.'},
  razao_social:{obrigatorio:'Informe a razão social.',invalido:'Confira a razão social.'},sistema_pdv:{obrigatorio:'Informe o sistema PDV (ou "nenhum").',invalido:'Confira o sistema PDV.'},
@@ -310,6 +318,30 @@ function envia(url,corpo){var c=window.AbortController?new AbortController():nul
 var FALHA='Não foi possível enviar agora. Tente de novo em instantes ou fale com a gente no WhatsApp.';
 function conversao(){if(typeof window.gtag==='function'){try{window.gtag('event','conversion',{send_to:SEND_TO})}catch(e){}}}
 
+// ---------- e-mail: sugestão de correção (o lead confirma) e dados do lead cadastrado
+function dist(a,b){var m=a.length,n=b.length,d=[],i,j;for(i=0;i<=m;i++){d[i]=[i]}for(j=0;j<=n;j++)d[0][j]=j;
+ for(i=1;i<=m;i++)for(j=1;j<=n;j++){var c=a[i-1]===b[j-1]?0:1;d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])d[i][j]=Math.min(d[i][j],d[i-2][j-2]+1)}return d[m][n]}
+function sugere(email){var e=String(email||'').trim(),i=e.lastIndexOf('@');if(i<1)return'';var u=e.slice(0,i),d=e.slice(i+1).toLowerCase();if(!d||DOM.indexOf(d)>=0)return'';
+ if(/\.br$/.test(d)&&DOM.indexOf(d.slice(0,-3))>=0)return u+'@'+d.slice(0,-3);
+ var melhor='',md=3;for(var k=0;k<DOM.length;k++){var x=dist(d,DOM[k]);if(x<md){md=x;melhor=DOM[k]}}return melhor?u+'@'+melhor:''}
+var sug={valor:'',para:'',respondida:{}};
+function mostraSugestao(valor,para){sug.valor=valor;sug.para=para;$('sug-texto').textContent=para;$('sug-email').hidden=false}
+function escondeSugestao(){$('sug-email').hidden=true;sug.valor='';sug.para=''}
+function confereEmail(){var v=$('f-email').value.trim(),p=sugere(v);if(p&&!sug.respondida[v.toLowerCase()]){mostraSugestao(v,p);return true}if(!p)escondeSugestao();return false}
+$('f-email').addEventListener('blur',confereEmail);
+$('f-email').addEventListener('input',function(){if(sug.valor&&this.value.trim()!==sug.valor)escondeSugestao()});
+$('sug-sim').addEventListener('click',function(){$('f-email').value=sug.para;sug.respondida[sug.para.toLowerCase()]=true;escondeSugestao();$('e-email').textContent='';$('f-email').removeAttribute('aria-invalid');$('f-email').focus()});
+$('sug-nao').addEventListener('click',function(){sug.respondida[sug.valor.toLowerCase()]=true;escondeSugestao();$('f-email').focus()});
+// link de lote ou campanha com lead_id e token: abre com o nome e o e-mail cadastrados (o lead pode editar)
+var cad=null;
+(function(){var lid=q.get('lead_id')||'',tk=q.get('token')||'';if(!/^[0-9a-f]{24}$/.test(lid)||!/^[0-9a-f]{32}$/.test(tk))return;
+ try{var u=new URL(window.location.href);u.searchParams.delete('lead_id');u.searchParams.delete('token');window.history.replaceState(null,'',u.pathname+u.search+u.hash)}catch(e){}
+ if(st.lead_id)return;
+ var c=window.AbortController?new AbortController():null,t=c?setTimeout(function(){c.abort()},8000):0;
+ fetch(DADOS+'?lead_id='+lid+'&token='+tk,{signal:c?c.signal:undefined}).then(function(r){clearTimeout(t);return r.ok?r.json():null}).then(function(j){
+  if(!j||!j.email)return;cad={lead_id:lid,token:tk,email:String(j.email).trim()};
+  if(!$('f-email').value.trim())$('f-email').value=cad.email;if(j.nome_contato&&!$('f-nome').value.trim())$('f-nome').value=String(j.nome_contato).slice(0,80)}).catch(function(){clearTimeout(t)})})();
+
 // ---------- etapa 1
 var f1=$('f1'),b1=$('b1'),s1=$('s1');
 f1.addEventListener('submit',function(e){e.preventDefault();limpaErros(f1);s1.textContent='';
@@ -323,14 +355,16 @@ f1.addEventListener('submit',function(e){e.preventDefault();limpaErros(f1);s1.te
  if(!c.procura)er.push({campo:'procura',erro:'obrigatorio'});
  if(!c.consentimento_lgpd)er.push({campo:'consentimento_lgpd',erro:'obrigatorio'});
  if(er.length){marca(er);return}
+ if(confereEmail()){$('sug-email').scrollIntoView({block:'center'});$('sug-sim').focus();return}
  c.caixas=cx;var o=origem();for(var k in o)c[k]=o[k];
+ if(cad){c.lead_id_cadastro=cad.lead_id;c.token_cadastro=cad.token;c.email_alterado=c.email.toLowerCase()!==cad.email.toLowerCase()}
  b1.disabled=true;s1.textContent='Enviando e consultando o CNPJ…';
  envia(E1,c).then(function(x){var j=x.j;b1.disabled=false;s1.textContent='';
   if(x.status===200&&j.ok){
    if(j.proximo==='pdvet'){conversao();$('l-pdvet').href=(j.url&&/^https:\/\//.test(j.url))?j.url:PDVET;mostra('pf-pdvet');return}
    if(j.proximo==='etapa2'&&j.lead_id&&j.pedido_token){conversao();st.lead_id=j.lead_id;st.pedido_token=j.pedido_token;st.email=c.email;st.cnpj=c.cnpj;st.empresa=j.empresa||{};salva();preparaE2();mostra('pf-e2');return}
    mostra('pf-fim');$('t-fim').textContent='Recebemos seus dados. Nossa equipe comercial entra em contato.';return}
-  if(x.status===422&&j.erros){marca(j.erros);return}
+  if(x.status===422&&j.erros){marca(j.erros);j.erros.forEach(function(y){if(y.campo==='email'&&y.sugestao){var sg=String(y.sugestao),v=$('f-email').value.trim();mostraSugestao(v,sg.indexOf('@')>0?sg:v.slice(0,v.lastIndexOf('@')+1)+sg)}});return}
   s1.textContent=j.mensagem||FALHA}).catch(function(){b1.disabled=false;s1.textContent=FALHA})});
 
 // ---------- etapa 2
@@ -368,4 +402,4 @@ f2.addEventListener('submit',function(e){e.preventDefault();limpaErros(f2);s2.te
 if(st.lead_id&&st.pedido_token){preparaE2();mostra('pf-e2')}
 })();
 </script>
-""".replace('__E1__', WEBHOOK_ETAPA1).replace('__E2__', WEBHOOK_ETAPA2).replace('__ANTIGO__', FORM_ANTIGO).replace('__PDVET__', URL_PDVET).replace('__SENDTO__', ADS_SEND_TO)
+""".replace('__E1__', WEBHOOK_ETAPA1).replace('__DADOS__', WEBHOOK_DADOS).replace('__DOM__', __import__('json').dumps(DOMINIOS_COMUNS)).replace('__E2__', WEBHOOK_ETAPA2).replace('__ANTIGO__', FORM_ANTIGO).replace('__PDVET__', URL_PDVET).replace('__SENDTO__', ADS_SEND_TO)

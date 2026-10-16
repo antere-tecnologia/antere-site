@@ -24,6 +24,14 @@ O formulário novo (`public/proposta.html`, contrato em `antere-automacao/docs/c
 - **Voltar:** trocar de novo para `false` nos dois lugares e gravar na `main`. Não precisa mexer em nenhuma página.
 - **Teste da chave:** `testes/site.test.js` confere que, com a chave desligada, nenhum link do site aponta para o formulário novo (no HTML e depois dos scripts) e que, com a chave ligada (simulada), os 20 links vão para `/proposta.html`.
 
+### Formulário: e-mail conferido antes do envio (16/10/2026)
+
+Aprovado pelo Rodrigo para o formulário novo (proposta da Operação: `antere-automacao/docs/proposta_formulario_email_1610.md`). Lado do site pronto em `proposta.html`; o combinado com a Operação está em `propostas/formulario_email_operacao_1610.md`.
+- **Sugestão de correção:** erros comuns de digitação no domínio (lista de 10 domínios, distância até 2, mais o `.br` sobrando, como `gmail.com.br`) mostram "Você quis dizer …?" com "Sim, trocar" e "Não, está certo". Não troca sozinho; o envio espera a resposta.
+- **Domínio sem e-mail:** quem confere é o servidor; com `422` `dominio_sem_email`, a tela mostra "Esse endereço não recebe e-mail. Confira o que vem depois do @." e a sugestão do servidor, se houver.
+- **Link de lote ou campanha com `lead_id` e `token`:** a página tira os dois da URL, busca nome e e-mail em `GET /webhook/form-proposta-dados` e preenche; o envio leva `lead_id_cadastro`, `token_cadastro` e `email_alterado`. Sem resposta do endpoint, abre vazio, como antes.
+- Depende do servidor (regra 1, endpoint e campos novos), que é da Operação. A chave do formulário continua desligada.
+
 ## WhatsApp (15/10/2026)
 
 Botão flutuante "Fale com a gente" no canto inferior direito de todas as páginas, inclusive as de `legal/`, menos no formulário. Leva ao número do atendimento com IA (`WHATSAPP_NUMERO` em `_src/componentes.py`, hoje 5511955032670) com a mensagem "Olá! Vim pelo site da Antere e quero saber mais sobre as soluções." e, quando a visita veio com UTM, a linha "Origem: fonte / meio / campanha". O botão some quando estaria por cima de um botão de proposta (celular). O clique em qualquer link do WhatsApp vira o evento `whatsapp_click` do Google Ads, sem conversão.
