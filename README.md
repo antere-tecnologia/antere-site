@@ -27,7 +27,7 @@ O formulário novo (`public/proposta.html`, contrato em `antere-automacao/docs/c
 ### Formulário: e-mail conferido antes do envio (16/10/2026)
 
 Aprovado pelo Rodrigo para o formulário novo (proposta da Operação: `antere-automacao/docs/proposta_formulario_email_1610.md`). Lado do site pronto em `proposta.html`; o combinado com a Operação está em `propostas/formulario_email_operacao_1610.md`.
-- **Sugestão de correção:** erros comuns de digitação no domínio (lista de 10 domínios, distância até 2, mais o `.br` sobrando, como `gmail.com.br`) mostram "Você quis dizer …?" com "Sim, trocar" e "Não, está certo". Não troca sozinho; o envio espera a resposta.
+- **Sugestão de correção:** erros comuns de digitação no domínio (lista de 10 domínios; distância 1 até 5 letras antes do ponto e 2 acima, com a mesma primeira letra; mais o `.br` sobrando, como `gmail.com.br`; regra do Rodrigo de 16/10, igual à da `lib/` da Operação) mostram "Você quis dizer …?" com "Sim, trocar" e "Não, está certo". Não troca sozinho; o envio espera a resposta.
 - **Domínio sem e-mail:** quem confere é o servidor; com `422` `dominio_sem_email`, a tela mostra "Esse endereço não recebe e-mail. Confira o que vem depois do @." e a sugestão do servidor, se houver.
 - **Link de lote ou campanha com `lead_id` e `token`:** a página tira os dois da URL, busca nome e e-mail em `GET /webhook/form-proposta-dados` e preenche; o envio leva `lead_id_cadastro`, `token_cadastro` e `email_alterado`. Sem resposta do endpoint, abre vazio, como antes.
 - Depende do servidor (regra 1, endpoint e campos novos), que é da Operação. A chave do formulário continua desligada.

@@ -379,7 +379,9 @@ function dist(a,b){var m=a.length,n=b.length,d=[],i,j;for(i=0;i<=m;i++){d[i]=[i]
  for(i=1;i<=m;i++)for(j=1;j<=n;j++){var c=a[i-1]===b[j-1]?0:1;d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])d[i][j]=Math.min(d[i][j],d[i-2][j-2]+1)}return d[m][n]}
 function sugere(email){var e=String(email||'').trim(),i=e.lastIndexOf('@');if(i<1)return'';var u=e.slice(0,i),d=e.slice(i+1).toLowerCase();if(!d||DOM.indexOf(d)>=0)return'';
  if(/\.br$/.test(d)&&DOM.indexOf(d.slice(0,-3))>=0)return u+'@'+d.slice(0,-3);
- var melhor='',md=3;for(var k=0;k<DOM.length;k++){var x=dist(d,DOM[k]);if(x<md){md=x;melhor=DOM[k]}}return melhor?u+'@'+melhor:''}
+ // regra de 16/10 (Rodrigo): distância 1 se o nome antes do primeiro ponto tem até 5 letras, 2 se é maior; a primeira letra tem de
+ // ser a mesma (olive.com não vira live.com)
+ var lim=d.split('.')[0].length<=5?1:2,melhor='',md=lim+1;for(var k=0;k<DOM.length;k++){if(DOM[k].charAt(0)!==d.charAt(0))continue;var x=dist(d,DOM[k]);if(x<md){md=x;melhor=DOM[k]}}return melhor?u+'@'+melhor:''}
 var sug={valor:'',para:'',respondida:{}};
 function mostraSugestao(valor,para){sug.valor=valor;sug.para=para;$('sug-texto').textContent=para;$('sug-email').hidden=false}
 function escondeSugestao(){$('sug-email').hidden=true;sug.valor='';sug.para=''}

@@ -22,17 +22,21 @@ Observação: em 16/10, 16h39 UTC, a proposta estava no branch `claude/adoring-k
 
 - Mesma lista da proposta: gmail.com, hotmail.com, outlook.com, live.com, yahoo.com, yahoo.com.br, icloud.com, uol.com.br, bol.com.br
   e terra.com.br.
-- Distância de digitação até 2 (Damerau-Levenshtein restrita: letra a mais, a menos, trocada ou duas vizinhas invertidas).
+- **Regra decidida pelo Rodrigo (16/10), a mesma da `lib/`:**
+  - distância de digitação (Damerau-Levenshtein restrita: letra a mais, a menos, trocada ou duas vizinhas invertidas) até **1** quando o
+    nome antes do primeiro ponto do domínio digitado tem até 5 letras, e até **2** quando tem mais;
+  - a **primeira letra** do domínio digitado tem de ser a mesma do domínio da lista (sem isso, `olive.com` estaria a 1 letra de
+    `live.com`);
+  - mais a regra do `.br` sobrando, abaixo.
 - **Regra a mais, para o exemplo `gmail.com.br` da proposta:** um domínio da lista seguido de `.br` que não está na lista
   (`gmail.com.br`, `hotmail.com.br`) sugere o da lista. Sem essa regra, `gmail.com.br` fica a distância 3 de `gmail.com` e não teria
   sugestão. **Peço que a função da `lib/` tenha a mesma regra**, para o site e o n8n darem a mesma resposta.
 - A sugestão aparece ao sair do campo e, de novo, no "Continuar". Ela não troca sozinha: o lead escolhe "Sim, trocar" ou
   "Não, está certo". Enquanto não responder, o envio espera. A resposta vale para aquele valor.
-- Casos testados: gmial.com, gmail.con, hotmial.com, outlok.com, gmail.com.br e yaho.com.br recebem sugestão. gmail.com,
-  empresaexemplo.com.br, yahoo.com.br, terra.com.br e uol.com não recebem.
-- **Risco para decidir junto:** domínios de empresa curtos e parecidos com a lista vão receber a pergunta. Exemplo: `olive.com` fica a
-  distância 1 de `live.com`. Como o lead confirma, o custo é só a pergunta. Se a Operação preferir, dá para usar distância 1 para
-  domínios de até 8 letras; aí os dois lados mudam juntos.
+- Casos testados (para a `lib/` usar os mesmos): recebem sugestão gmial.com, gmail.con, hotmial.com, outlok.com, outllok.com, gmail.com.br,
+  yaho.com.br, gmal.com, gmai.com, hotmal.com e yhaoo.com. Não recebem: olive.com, blive.com, gmaxyz.com, uol.com, gmail.com,
+  empresaexemplo.com.br, yahoo.com.br e terra.com.br.
+- **Risco dos domínios curtos:** resolvido pela regra de 16/10 acima.
 - Quando a `lib/` da Operação sair, o site troca a sua cópia da lista e da função pela mesma regra, e um teste compara as duas respostas.
 
 ### Regra 3: abrir já preenchido (site + endpoint novo)

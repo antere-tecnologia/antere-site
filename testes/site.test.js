@@ -227,11 +227,11 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
 
   // ---------------- e-mail (proposta_formulario_email_1610) ----------------
   const LID = 'c'.repeat(24), TK = 'd'.repeat(32);
-  await t('e-mail: "Você quis dizer …?" para erros comuns (gmial.com, gmail.con, hotmial.com, outlok.com, gmail.com.br); nada para domínio de empresa', async () => {
+  await t('e-mail: "Você quis dizer …?" para erros comuns (gmial.com, hotmial.com, gmail.com.br…); sem pergunta para olive.com e domínio de empresa (regra de 16/10: 1 letra até 5, 2 acima, mesma 1ª letra)', async () => {
     const { ctx } = await contexto(b); const p = await ctx.newPage(); await p.goto(BASE + '/proposta.html?previa=1');
-    const casos = { 'maria@gmial.com': 'maria@gmail.com', 'maria@gmail.con': 'maria@gmail.com', 'ana@hotmial.com': 'ana@hotmail.com', 'ana@outlok.com': 'ana@outlook.com', 'jo@gmail.com.br': 'jo@gmail.com', 'jo@yaho.com.br': 'jo@yahoo.com.br' };
+    const casos = { 'maria@gmial.com': 'maria@gmail.com', 'maria@gmail.con': 'maria@gmail.com', 'ana@hotmial.com': 'ana@hotmail.com', 'ana@outlok.com': 'ana@outlook.com', 'jo@gmail.com.br': 'jo@gmail.com', 'jo@yaho.com.br': 'jo@yahoo.com.br', 'jo@gmal.com': 'jo@gmail.com', 'jo@gmai.com': 'jo@gmail.com', 'jo@hotmal.com': 'jo@hotmail.com', 'a@yhaoo.com': 'a@yahoo.com', 'jo@outllok.com': 'jo@outlook.com' };
     for (const [de, para] of Object.entries(casos)) { await p.fill('#f-email', de); await p.locator('#f-email').blur(); assert.ok(await p.isVisible('#sug-email'), de); assert.strictEqual(await p.textContent('#sug-texto'), para, de); }
-    for (const ok of ['maria@gmail.com', 'compras@empresaexemplo.com.br', 'jo@yahoo.com.br', 'x@terra.com.br', 'jo@uol.com']) { await p.fill('#f-email', ok); await p.locator('#f-email').blur(); assert.ok(await p.isHidden('#sug-email'), ok); }
+    for (const ok of ['maria@gmail.com', 'compras@empresaexemplo.com.br', 'jo@yahoo.com.br', 'x@terra.com.br', 'jo@uol.com', 'contato@olive.com', 'a@blive.com', 'a@gmaxyz.com']) { await p.fill('#f-email', ok); await p.locator('#f-email').blur(); assert.ok(await p.isHidden('#sug-email'), ok); }
     await ctx.close();
   });
   await t('e-mail: a sugestão não troca sozinha; envio com erro comum espera a resposta; "Sim, trocar" e "Não, está certo" seguem', async () => {
