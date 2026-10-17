@@ -14,6 +14,9 @@ WEBHOOK_DADOS = "https://raregoat-n8n.cloudfy.live/webhook/form-proposta-dados"
 DOMINIOS_COMUNS = ["gmail.com", "hotmail.com", "outlook.com", "live.com", "yahoo.com", "yahoo.com.br", "icloud.com", "uol.com.br", "bol.com.br", "terra.com.br"]
 FORM_ANTIGO = "https://raregoat-n8n.cloudfy.live/form/proposta?ref=site_institucional"
 URL_PDVET = "https://portal.pdvet.com.br/cadastro"
+# 17/10/2026 (Rodrigo): a pergunta da conta PJ C6 saiu da etapa 2. Enquanto o contrato do n8n exigir o campo conta_pj_c6, o site manda
+# "nao" (sem prometer a isenção da implantação). Quando a Operação tirar a exigência do contrato, trocar para "" e o campo deixa de ir.
+CONTA_PJ_ENVIO = "nao"
 ADS_SEND_TO = "AW-18479570694/4-TPCPzV6ZcdEIa-3-tE"
 
 # ---- AS CHAVES -------------------------------------------------------------------------------------------------------
@@ -149,6 +152,12 @@ FORM_HEAD = """<meta name="robots" content="noindex">
 <style>
 .top .btn-primary{display:none}
 .pf section{padding-block:clamp(1.5rem,5vw,3.5rem)}
+/* 17/10/2026: o formulário inteiro no tema escuro do site, inclusive os controles nativos (opções, caixas, lista, setas dos números) */
+.pf,.pf input,.pf select,.pf textarea{color-scheme:dark}
+.pf a:not(.btn){color:var(--indigo-ink)}
+.pf select option{background:var(--surface);color:var(--ink)}
+.pf input:-webkit-autofill,.pf input:-webkit-autofill:hover,.pf input:-webkit-autofill:focus{-webkit-text-fill-color:var(--ink);-webkit-box-shadow:0 0 0 1000px var(--surface) inset;caret-color:var(--ink);transition:background-color 9999s}
+.pf input::placeholder{color:var(--ink-3);opacity:1}
 .pf-wrap{max-width:640px}
 .pf-passo{display:grid;gap:1.1rem}
 .pf-passo h1{font-size:clamp(1.7rem,6vw,2.4rem)}
@@ -169,7 +178,9 @@ FORM_HEAD = """<meta name="robots" content="noindex">
 :root[data-theme="dark"] .pf .erro{color:#FF8A7A}
 .pf [aria-invalid="true"]{border-color:#C0392B!important}
 .pf .btn{justify-content:center;min-height:52px;font-size:1.02rem}
-.pf .btn-primary[disabled]{opacity:.65;cursor:progress}
+.pf .btn-primary[disabled]{cursor:progress;transform:none}
+.pf .btn-ghost{color:var(--indigo-ink);border-color:var(--indigo-soft)}
+.pf .btn-ghost:hover{background:var(--indigo-tint)}
 .pf .acoes{display:grid;gap:.75rem}
 @media (min-width:600px){.pf .acoes{grid-template-columns:auto auto;justify-content:start}}
 .pf .aviso{color:var(--ink-2);font-size:.95rem}
@@ -179,8 +190,8 @@ FORM_HEAD = """<meta name="robots" content="noindex">
 .pf .empresa dl{display:grid;grid-template-columns:auto 1fr;gap:.25rem .9rem;margin:0}
 .pf .empresa dt{color:var(--ink-3)}
 .pf .empresa dd{margin:0;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
-.pf .empresa .acoes{grid-template-columns:1fr}
-@media (min-width:480px){.pf .empresa .acoes{grid-template-columns:1fr 1fr}}
+.pf .empresa .acoes{display:flex;flex-wrap:nowrap;gap:.5rem}
+.pf .empresa .acoes .btn{min-height:36px;height:36px;padding:0 .95rem;font-size:.9rem;white-space:nowrap;line-height:1}
 .pf .btn{white-space:normal;text-align:center;line-height:1.2}
 .pf .ok-marca{color:var(--petroleo);font-weight:600}
 .pf .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
@@ -232,7 +243,7 @@ FORM_BODY = r"""
     <div class="empresa" id="bloco-empresa">
       <strong>Sua empresa (consultada pelo CNPJ)</strong>
       <dl><dt>Razão social</dt><dd id="v-razao"></dd><dt>CNPJ</dt><dd id="v-cnpj"></dd><dt>Cidade/UF</dt><dd id="v-cidade"></dd></dl>
-      <div class="acoes" id="acoes-empresa"><button class="btn btn-ghost" type="button" id="b-correto">Os dados estão corretos</button><button class="btn btn-ghost" type="button" id="b-corrigir">Corrigir</button></div>
+      <div class="acoes" id="acoes-empresa"><button class="btn btn-primary" type="button" id="b-correto">✓ Dados corretos</button><button class="btn btn-ghost" type="button" id="b-corrigir">Corrigir</button></div>
       <p class="ok-marca" id="m-correto" hidden>Dados confirmados.</p>
     </div>
     <div class="campo" id="c-razao" hidden><label for="f-razao">Razão social</label><input id="f-razao" name="razao_social" type="text" autocomplete="organization" maxlength="120"><span class="dica" id="d-razao"></span><p class="erro" id="e-razao_social"></p></div>
@@ -254,10 +265,6 @@ FORM_BODY = r"""
       <label class="opcao"><input type="radio" name="recebimento" value="d1"> D+1 com antecipação</label>
       <label class="opcao"><input type="radio" name="recebimento" value="d31"> D+31 sem antecipação</label>
       <p class="erro" id="e-recebimento"></p></fieldset>
-    <fieldset class="campo" id="g-conta"><legend>Tem ou vai abrir conta PJ no C6 Bank?</legend><span class="dica">Com a conta PJ C6, a taxa de implantação (R$ 200) é isenta.</span>
-      <label class="opcao"><input type="radio" name="conta_pj_c6" value="sim"> Sim</label>
-      <label class="opcao"><input type="radio" name="conta_pj_c6" value="nao"> Não</label>
-      <p class="erro" id="e-conta_pj_c6"></p></fieldset>
     <label class="hp" aria-hidden="true">Site<input name="website" type="text" tabindex="-1" autocomplete="off"></label>
     <p class="status" id="s2" role="status" aria-live="polite"></p>
     <div class="acoes"><button class="btn btn-primary" type="submit" id="b2">Receber minha proposta</button></div>
@@ -282,7 +289,7 @@ FORM_JS = r"""
 /* Formulário de proposta em 2 etapas (15/10/2026). Contrato: antere-automacao/docs/contrato_formulario_site.md.
    Com a chave desligada (site-config.js), a página manda o visitante ao formulário antigo; ?previa=1 abre mesmo assim (teste). */
 (function(){
-var E1='__E1__',E2='__E2__',DADOS='__DADOS__',DOM=__DOM__,ANTIGO='__ANTIGO__',PDVET='__PDVET__',SEND_TO='__SENDTO__',K='antere_form_site';
+var E1='__E1__',E2='__E2__',CONTA_PJ='__CONTA_PJ__',DADOS='__DADOS__',DOM=__DOM__,ANTIGO='__ANTIGO__',PDVET='__PDVET__',SEND_TO='__SENDTO__',K='antere_form_site';
 var q;try{q=new URLSearchParams(window.location.search)}catch(e){q=new URLSearchParams('')}
 var ORIG=['utm_source','utm_medium','utm_campaign','utm_term','utm_content','gclid','ref'];
 if(window.ANTERE_FORM_NOVO!==true&&q.get('previa')!=='1'){var u0=new URL(ANTIGO);ORIG.forEach(function(k){var v=q.get(k);if(v&&k!=='ref')u0.searchParams.set(k,v)});window.location.replace(u0.toString());return}
@@ -299,8 +306,8 @@ var MSG={nome:{obrigatorio:'Informe seu nome completo.',invalido:'Informe seu no
  razao_social:{obrigatorio:'Informe a razão social.',invalido:'Confira a razão social.'},sistema_pdv:{obrigatorio:'Informe o sistema PDV (ou "nenhum").',invalido:'Confira o sistema PDV.'},
  lojas:{obrigatorio:'Informe o número de lojas.',invalido:'Use um número de 1 a 999.'},produtos:{obrigatorio:'Escolha pelo menos um produto.',invalido:'Escolha pelo menos um produto.'},
  faixa_link:{obrigatorio:'Escolha a faixa de vendas por mês.',invalido:'Escolha a faixa de vendas por mês.'},vendas_cartao:{obrigatorio:'Escolha quanto vende no cartão.',invalido:'Escolha quanto vende no cartão.'},
- recebimento:{obrigatorio:'Escolha o recebimento.',invalido:'Escolha o recebimento.'},conta_pj_c6:{obrigatorio:'Responda sobre a conta PJ C6.',invalido:'Responda sobre a conta PJ C6.'}};
-var ALVO={nome:'f-nome',whatsapp:'f-whatsapp',email:'f-email',cnpj:'f-cnpj',caixas:'f-caixas',procura:'g-procura',consentimento_lgpd:'f-lgpd',razao_social:'f-razao',sistema_pdv:'f-sistema',lojas:'f-lojas',produtos:'g-produtos',faixa_link:'f-faixa',vendas_cartao:'c-vendas',recebimento:'c-receb',conta_pj_c6:'g-conta'};
+ recebimento:{obrigatorio:'Escolha o recebimento.',invalido:'Escolha o recebimento.'}};
+var ALVO={nome:'f-nome',whatsapp:'f-whatsapp',email:'f-email',cnpj:'f-cnpj',caixas:'f-caixas',procura:'g-procura',consentimento_lgpd:'f-lgpd',razao_social:'f-razao',sistema_pdv:'f-sistema',lojas:'f-lojas',produtos:'g-produtos',faixa_link:'f-faixa',vendas_cartao:'c-vendas',recebimento:'c-receb'};
 function limpaErros(f){var es=f.querySelectorAll('.erro');for(var i=0;i<es.length;i++)es[i].textContent='';var iv=f.querySelectorAll('[aria-invalid]');for(var j=0;j<iv.length;j++)iv[j].removeAttribute('aria-invalid')}
 function marca(lista){var primeiro=null;(lista||[]).forEach(function(x){var e=$('e-'+x.campo);if(!e)return;e.textContent=(MSG[x.campo]||{})[x.erro]||'Confira este campo.';var a=$(ALVO[x.campo]);if(a){a.setAttribute('aria-invalid','true');a.setAttribute('aria-describedby','e-'+x.campo);if(!primeiro)primeiro=a}});
  if(primeiro){var foco=primeiro.matches('input,select')?primeiro:primeiro.querySelector('input');(foco||primeiro).focus();primeiro.scrollIntoView({block:'center'})}}
@@ -382,7 +389,7 @@ function produtos(){var r=[],cs=f2.querySelectorAll('input[name="produtos"]:chec
 function condicionais(){var p=produtos();$('c-faixa').hidden=p.indexOf('link')<0;$('c-vendas').hidden=p.indexOf('tef')<0;$('c-receb').hidden=p.indexOf('tef')<0}
 f2.addEventListener('change',function(e){if(e.target&&e.target.name==='produtos')condicionais()});
 f2.addEventListener('submit',function(e){e.preventDefault();limpaErros(f2);s2.textContent='';
- var p=produtos(),c={lead_id:st.lead_id,pedido_token:st.pedido_token,razao_social:$('f-razao').value.trim(),sistema_pdv:f2.sistema_pdv.value.trim(),lojas:f2.lojas.value.trim(),produtos:p,conta_pj_c6:radio(f2,'conta_pj_c6'),website:f2.website.value};
+ var p=produtos(),c={lead_id:st.lead_id,pedido_token:st.pedido_token,razao_social:$('f-razao').value.trim(),sistema_pdv:f2.sistema_pdv.value.trim(),lojas:f2.lojas.value.trim(),produtos:p,website:f2.website.value};
  if(p.indexOf('link')>=0)c.faixa_link=$('f-faixa').value;
  if(p.indexOf('tef')>=0){c.vendas_cartao=radio(f2,'vendas_cartao');c.recebimento=radio(f2,'recebimento')}
  var er=[];
@@ -393,8 +400,8 @@ f2.addEventListener('submit',function(e){e.preventDefault();limpaErros(f2);s2.te
  if(p.indexOf('link')>=0&&!c.faixa_link)er.push({campo:'faixa_link',erro:'obrigatorio'});
  if(p.indexOf('tef')>=0&&!c.vendas_cartao)er.push({campo:'vendas_cartao',erro:'obrigatorio'});
  if(p.indexOf('tef')>=0&&!c.recebimento)er.push({campo:'recebimento',erro:'obrigatorio'});
- if(!c.conta_pj_c6)er.push({campo:'conta_pj_c6',erro:'obrigatorio'});
  if(er.length){marca(er);return}
+ if(CONTA_PJ)c.conta_pj_c6=CONTA_PJ;
  c.lojas=lj;b2.disabled=true;s2.textContent='Enviando…';
  envia(E2,c).then(function(x){var j=x.j;b2.disabled=false;s2.textContent='';
   if((x.status===200&&j.ok)||j.erro==='ja_enviado'){$('v-email').textContent=j.email||st.email||'';$('t-escalonar').hidden=!j.escalonar;st={};salva();mostra('pf-fim');return}
@@ -405,4 +412,4 @@ f2.addEventListener('submit',function(e){e.preventDefault();limpaErros(f2);s2.te
 if(st.lead_id&&st.pedido_token){preparaE2();mostra('pf-e2')}
 })();
 </script>
-""".replace('__E1__', WEBHOOK_ETAPA1).replace('__DADOS__', WEBHOOK_DADOS).replace('__DOM__', __import__('json').dumps(DOMINIOS_COMUNS)).replace('__E2__', WEBHOOK_ETAPA2).replace('__ANTIGO__', FORM_ANTIGO).replace('__PDVET__', URL_PDVET).replace('__SENDTO__', ADS_SEND_TO)
+""".replace('__E1__', WEBHOOK_ETAPA1).replace('__CONTA_PJ__', CONTA_PJ_ENVIO).replace('__DADOS__', WEBHOOK_DADOS).replace('__DOM__', __import__('json').dumps(DOMINIOS_COMUNS)).replace('__E2__', WEBHOOK_ETAPA2).replace('__ANTIGO__', FORM_ANTIGO).replace('__PDVET__', URL_PDVET).replace('__SENDTO__', ADS_SEND_TO)

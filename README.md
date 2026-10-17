@@ -32,6 +32,12 @@ Aprovado pelo Rodrigo para o formulário novo (proposta da Operação: `antere-a
 - **Link de lote ou campanha com `lead_id` e `token`:** a página tira os dois da URL, busca nome e e-mail em `GET /webhook/form-proposta-dados` e preenche; o envio leva `lead_id_cadastro`, `token_cadastro` e `email_alterado`. Sem resposta do endpoint, abre vazio, como antes.
 - Depende do servidor (regra 1, endpoint e campos novos), que é da Operação. A chave do formulário continua desligada.
 
+### Formulário: ajustes de 17/10/2026 (Rodrigo)
+
+- **Tema escuro em tudo:** etapa 1, etapa 2, tela da PDVet, tela final, erros, "Você quis dizer…?" e carregando. Inclui os controles nativos (`color-scheme: dark`: opções, caixas, a lista de faixas e as setas dos números), o preenchimento automático do navegador e os links e botões de contorno em roxo claro (`--indigo-ink`). O teste "tema escuro em todas as telas e estados" confere fundo, contraste ≥ 4,5 e controles, com o aparelho em modo claro e em modo escuro.
+- **Bloco da empresa:** "✓ Dados corretos" (preenchido) e "Corrigir" (contorno), pequenos (36 px), lado a lado, sem quebrar linha.
+- **Conta PJ C6:** a pergunta saiu da etapa 2. Enquanto o contrato do n8n exigir `conta_pj_c6`, o site manda `"nao"` (`CONTA_PJ_ENVIO` em `_src/componentes.py`). Quando a Operação tirar a exigência, trocar para `""` (o campo deixa de ir) e ajustar o teste. Combinado em `propostas/formulario_email_operacao_1610.md`.
+
 ## WhatsApp (15/10/2026)
 
 Botão flutuante "Fale com a gente" no canto inferior direito de todas as páginas, inclusive as de `legal/`, menos no formulário. Leva ao número do atendimento com IA (`WHATSAPP_NUMERO` em `_src/componentes.py`, hoje 5511955032670) com a mensagem "Olá! Vim pelo site da Antere e quero saber mais sobre as soluções." e, quando a visita veio com UTM, a linha "Origem: fonte / meio / campanha". O botão some quando estaria por cima de um botão de proposta (celular). O clique em qualquer link do WhatsApp vira o evento `whatsapp_click` do Google Ads, sem conversão.

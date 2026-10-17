@@ -162,6 +162,13 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     const conv = await eventos(p, 'conversion'); assert.strictEqual(conv.length, 1); assert.strictEqual(conv[0].send_to, SEND_TO);
     assert.strictEqual(await p.textContent('#v-razao'), 'EMPRESA EXEMPLO LTDA'); assert.strictEqual(await p.textContent('#v-cnpj'), CNPJ); assert.strictEqual(await p.textContent('#v-cidade'), 'São Paulo/SP');
     assert.ok(await p.isHidden('#c-razao'));
+    // 17/10: "✓ Dados corretos" (preenchido) e "Corrigir" (contorno), pequenos e lado a lado no celular; sem a pergunta da conta PJ
+    const bc = await p.locator('#b-correto').boundingBox(), bk = await p.locator('#b-corrigir').boundingBox();
+    assert.strictEqual(await p.textContent('#b-correto'), '✓ Dados corretos'); assert.strictEqual(await p.textContent('#b-corrigir'), 'Corrigir');
+    assert.ok(/btn-primary/.test(await p.getAttribute('#b-correto', 'class')) && /btn-ghost/.test(await p.getAttribute('#b-corrigir', 'class')));
+    assert.ok(Math.abs(bc.y - bk.y) < 1 && bk.x > bc.x + bc.width - 1, 'lado a lado'); for (const x of [bc, bk]) assert.ok(x.height >= 34 && x.height <= 38, 'altura ' + x.height);
+    assert.ok(await p.evaluate(() => [...document.querySelectorAll('#acoes-empresa .btn')].every(b => b.scrollWidth <= b.clientWidth + 1 && b.getBoundingClientRect().height < 40)), 'quebrou linha');
+    assert.strictEqual(await p.locator('input[name=conta_pj_c6]').count(), 0); assert.ok(!/conta PJ|isenta/i.test(await p.textContent('#pf-e2')));
     await p.click('#b-correto'); assert.ok(await p.isVisible('#m-correto'));
     assert.ok(await p.isHidden('#c-faixa') && await p.isHidden('#c-vendas') && await p.isHidden('#c-receb'));
     await p.check('input[name=produtos][value=link]');
@@ -171,12 +178,12 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     assert.strictEqual(await p.locator('#f-faixa option[value]:not([value=""])').count(), 8);
     await p.check('input[name=produtos][value=link]');
     await p.fill('#f-sistema', 'PDVet'); await p.fill('#f-lojas', '2'); await p.selectOption('#f-faixa', '201_600');
-    await p.check('input[name=vendas_cartao][value="8_30mil"]'); await p.check('input[name=recebimento][value=d1]'); await p.check('input[name=conta_pj_c6][value=sim]');
+    await p.check('input[name=vendas_cartao][value="8_30mil"]'); await p.check('input[name=recebimento][value=d1]');
     assert.match(await p.textContent('#pf-e2'), /Se você parar aqui, tudo bem: nossa equipe comercial entra em contato para completar\./);
     assert.ok(!/me ligue/i.test(await p.textContent('main')));
     await p.click('#b2'); await p.waitForSelector('#pf-fim:not([hidden])');
     const c2 = reqs[1].corpo;
-    assert.deepStrictEqual(c2, { lead_id: 'a'.repeat(24), pedido_token: 'b'.repeat(32), razao_social: 'EMPRESA EXEMPLO LTDA', sistema_pdv: 'PDVet', lojas: 2, produtos: ['tef', 'link'], conta_pj_c6: 'sim', website: '', faixa_link: '201_600', vendas_cartao: '8_30mil', recebimento: 'd1' });
+    assert.deepStrictEqual(c2, { lead_id: 'a'.repeat(24), pedido_token: 'b'.repeat(32), razao_social: 'EMPRESA EXEMPLO LTDA', sistema_pdv: 'PDVet', lojas: 2, produtos: ['tef', 'link'], website: '', conta_pj_c6: 'nao', faixa_link: '201_600', vendas_cartao: '8_30mil', recebimento: 'd1' });
     if (lib) assert.ok(lib.validarEtapa2(c2, { lead_id: c2.lead_id, pedido_token: c2.pedido_token, procura: 'c6pay' }).ok);
     assert.strictEqual(await p.textContent('#pf-fim h1'), 'Sua proposta foi enviada.');
     assert.strictEqual(await p.textContent('#v-email'), 'maria@empresa.com.br');
@@ -191,7 +198,7 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok({ cnpj_confirmado: false, razao_social: '', cidade: '', uf: '' }, 'c6pay') }); const p = await ctx.newPage();
     await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, 'c6pay'); await p.click('#b1'); await p.waitForSelector('#pf-e2:not([hidden])');
     assert.ok(await p.isHidden('#bloco-empresa')); assert.ok(await p.isVisible('#f-razao'));
-    await p.fill('#f-sistema', 'Nenhum'); await p.fill('#f-lojas', '1'); await p.check('input[name=produtos][value=link]'); await p.selectOption('#f-faixa', 'acima_10000'); await p.check('input[name=conta_pj_c6][value=nao]');
+    await p.fill('#f-sistema', 'Nenhum'); await p.fill('#f-lojas', '1'); await p.check('input[name=produtos][value=link]'); await p.selectOption('#f-faixa', 'acima_10000');
     await p.click('#b2'); assert.strictEqual(await p.textContent('#e-razao_social'), 'Informe a razão social.'); assert.strictEqual(reqs.length, 1);
     await p.fill('#f-razao', 'Minha Empresa Ltda'); await p.click('#b2'); await p.waitForSelector('#pf-fim:not([hidden])');
     assert.strictEqual(reqs[1].corpo.razao_social, 'Minha Empresa Ltda'); assert.ok(!('vendas_cartao' in reqs[1].corpo)); assert.ok(await p.isVisible('#t-escalonar'));
@@ -199,7 +206,7 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     const x = await contexto(b, { webhooks: etapa1Ok(EMP, 'c6pay') }); const p2 = await x.ctx.newPage();
     await p2.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p2, 'c6pay'); await p2.click('#b1'); await p2.waitForSelector('#pf-e2:not([hidden])');
     await p2.click('#b-corrigir'); assert.ok(await p2.isVisible('#f-razao')); await p2.fill('#f-razao', 'Nome Corrigido SA');
-    await p2.fill('#f-sistema', 'Linx'); await p2.fill('#f-lojas', '1'); await p2.check('input[name=produtos][value=tef]'); await p2.check('input[name=vendas_cartao][value=ate_8mil]'); await p2.check('input[name=recebimento][value=d31]'); await p2.check('input[name=conta_pj_c6][value=sim]');
+    await p2.fill('#f-sistema', 'Linx'); await p2.fill('#f-lojas', '1'); await p2.check('input[name=produtos][value=tef]'); await p2.check('input[name=vendas_cartao][value=ate_8mil]'); await p2.check('input[name=recebimento][value=d31]');
     await p2.click('#b2'); await p2.waitForSelector('#pf-fim:not([hidden])'); assert.strictEqual(x.reqs[1].corpo.razao_social, 'Nome Corrigido SA'); assert.ok(!('faixa_link' in x.reqs[1].corpo));
     await x.ctx.close();
   });
@@ -223,6 +230,56 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     modo = 503; await p.click('#b1'); await p.waitForFunction(() => document.getElementById('s1').textContent.includes('manutenção'));
     assert.strictEqual((await eventos(p, 'conversion')).length, 0); assert.ok(await p.isVisible('#pf-e1'));
     await ctx.close();
+  });
+
+  await t('formulário: tema escuro em todas as telas e estados (sem fundo claro, contraste ≥ 4,5, controles nativos escuros), com o aparelho em modo claro ou escuro', async () => {
+    const auditar = (p, nome) => p.evaluate((nome) => {
+      const rgb = (s) => { const m = s.match(/rgba?\(([^)]+)\)/); if (!m) return null; const v = m[1].split(',').map(parseFloat); return { r: v[0], g: v[1], b: v[2], a: v.length > 3 ? v[3] : 1 }; };
+      const lum = (c) => { const f = (x) => { x /= 255; return x <= .03928 ? x / 12.92 : Math.pow((x + .055) / 1.055, 2.4); }; return .2126 * f(c.r) + .7152 * f(c.g) + .0722 * f(c.b); };
+      const fundo = (el) => { const pilha = []; for (let e = el; e; e = e.parentElement) { const c = rgb(getComputedStyle(e).backgroundColor); if (c && c.a > 0) pilha.push(c); if (c && c.a >= 1) break; }
+        let r = pilha.length && pilha[pilha.length - 1].a >= 1 ? pilha.pop() : { r: 18, g: 19, b: 26 }; while (pilha.length) { const c = pilha.pop(); r = { r: c.r * c.a + r.r * (1 - c.a), g: c.g * c.a + r.g * (1 - c.a), b: c.b * c.a + r.b * (1 - c.a) }; } return r; };
+      const prob = [];
+      for (const el of document.querySelectorAll('main *')) {
+        const r = el.getBoundingClientRect(); const cs = getComputedStyle(el);
+        if (!r.width || !r.height || cs.visibility === 'hidden' || el.closest('[hidden]') || el.closest('.hp')) continue;
+        const bg = fundo(el), Lb = lum(bg);
+        if (Lb > 0.25) prob.push(nome + ': fundo claro em ' + el.tagName + '#' + el.id);
+        if (['INPUT', 'SELECT'].includes(el.tagName) && !/dark/.test(cs.colorScheme)) prob.push(nome + ': controle claro ' + el.tagName + '#' + el.id);
+        const texto = ([...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) || ['INPUT', 'SELECT'].includes(el.tagName)) && !['radio', 'checkbox'].includes(el.type);
+        if (texto) { const c = rgb(cs.color), t = { r: c.r * c.a + bg.r * (1 - c.a), g: c.g * c.a + bg.g * (1 - c.a), b: c.b * c.a + bg.b * (1 - c.a) }; const L = lum(t), cr = (Math.max(L, Lb) + .05) / (Math.min(L, Lb) + .05);
+          if (cr < 4.5) prob.push(nome + ': contraste ' + cr.toFixed(2) + ' em ' + el.tagName + '#' + el.id + ' "' + (el.innerText || '').slice(0, 30) + '"'); }
+      }
+      return prob;
+    }, nome);
+    const probs = [];
+    for (const colorScheme of ['light', 'dark']) {
+      let modo = 'etapa2';
+      const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, colorScheme });
+      await ctx.route('**/*', async (r) => {
+        const u = new URL(r.request().url());
+        if (u.origin === BASE) { const f = u.pathname.slice(1) || 'index.html'; return r.fulfill({ body: fs.readFileSync(path.join(PUB, f)), contentType: f.endsWith('.js') ? 'application/javascript' : 'text/html' }); }
+        if (u.href.startsWith(E1) || u.href.startsWith(E2)) { await new Promise(z => setTimeout(z, 300)); const c = JSON.parse(r.request().postData() || '{}');
+          const resp = u.href.startsWith(E1) && modo === '422' ? { status: 422, body: { ok: false, erro: 'validacao', erros: [{ campo: 'email', erro: 'dominio_sem_email', sugestao: 'empresa.com.br' }] } } : etapa1Ok(EMP, modo === 'pdvet' ? 'pdvet' : 'c6pay')(u.href.startsWith(E1) ? E1 : E2, c);
+          return r.fulfill({ status: resp.status, body: JSON.stringify(resp.body), contentType: 'application/json' }); }
+        return r.abort();
+      });
+      const p = await ctx.newPage(); const nome = (n) => colorScheme + '/' + n;
+      const abre = async () => { await p.goto(BASE + '/proposta.html?previa=1'); await p.evaluate(() => sessionStorage.clear()); await p.goto(BASE + '/proposta.html?previa=1'); };
+      await abre(); probs.push(...await auditar(p, nome('etapa 1')));
+      await p.click('#b1'); probs.push(...await auditar(p, nome('erros da etapa 1')));
+      await abre(); await p.fill('#f-email', 'maria@gmial.com'); await p.locator('#f-email').blur(); probs.push(...await auditar(p, nome('você quis dizer')));
+      await abre(); modo = '422'; await preencheE1(p, 'c6pay'); await p.click('#b1'); await p.waitForTimeout(80); probs.push(...await auditar(p, nome('carregando etapa 1')));
+      await p.waitForFunction(() => document.getElementById('e-email').textContent.length > 0); probs.push(...await auditar(p, nome('422')));
+      await abre(); modo = 'pdvet'; await preencheE1(p, 'pdvet'); await p.click('#b1'); await p.waitForSelector('#pf-pdvet:not([hidden])'); probs.push(...await auditar(p, nome('PDVet')));
+      await abre(); modo = 'etapa2'; await preencheE1(p, 'c6pay'); await p.click('#b1'); await p.waitForSelector('#pf-e2:not([hidden])');
+      await p.check('input[name=produtos][value=tef]'); await p.check('input[name=produtos][value=link]'); probs.push(...await auditar(p, nome('etapa 2')));
+      await p.click('#b2'); probs.push(...await auditar(p, nome('erros da etapa 2'))); await p.click('#b-corrigir'); probs.push(...await auditar(p, nome('corrigir')));
+      await p.fill('#f-sistema', 'PDVet'); await p.fill('#f-lojas', '2'); await p.selectOption('#f-faixa', '201_600'); await p.check('input[name=vendas_cartao][value="8_30mil"]'); await p.check('input[name=recebimento][value=d1]');
+      await p.click('#b2'); await p.waitForTimeout(80); probs.push(...await auditar(p, nome('carregando etapa 2')));
+      await p.waitForSelector('#pf-fim:not([hidden])'); probs.push(...await auditar(p, nome('tela final')));
+      await ctx.close();
+    }
+    assert.deepStrictEqual(probs, []);
   });
 
   // ---------------- e-mail (proposta_formulario_email_1610) ----------------

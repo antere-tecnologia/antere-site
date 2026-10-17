@@ -80,3 +80,16 @@ Observação: em 16/10, 16h39 UTC, a proposta estava no branch `claude/adoring-k
 Entra no mesmo teste já pendente do formulário (`/proposta.html?previa=1`, com CNPJ e e-mail internos combinados com a Operação):
 um envio com domínio sem MX (deve dar `422`), um com erro comum (sugestão na tela) e, quando os links com token existirem, um link de
 lote com `lead_id` e `token`.
+
+## 17/10/2026: a pergunta da conta PJ C6 saiu da etapa 2 (decisão do Rodrigo)
+
+- A tela não pergunta mais "Tem ou vai abrir conta PJ no C6 Bank?" nem mostra o texto da isenção da implantação.
+- **Enquanto o contrato exigir `conta_pj_c6`** (hoje é obrigatório em `docs/contrato_formulario_site.md` e em
+  `validarEtapa2`, na `lib/formulario_site.js`), o site manda `conta_pj_c6: "nao"`. Assim não promete a isenção, e a etapa 2 não volta
+  com `422`.
+- **Pedido à Operação:**
+  - tirar a exigência do campo no contrato e na `validarEtapa2`, aceitando a etapa 2 sem ele;
+  - decidir o que a Geração de Proposta usa no lugar de "Conta PJ C6" (`pedidoGeracao`), por exemplo, a proposta sempre explicando
+    a isenção com a conta PJ.
+  - Depois de publicado, avisar a sessão Site: ela troca `CONTA_PJ_ENVIO` para `""` em `_src/componentes.py` e o campo deixa de ir.
+    O teste "formulário C6 Pay" muda junto.
