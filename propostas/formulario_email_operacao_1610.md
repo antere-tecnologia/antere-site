@@ -187,3 +187,7 @@ o n8n aceita o envio abaixo (hoje, `validarEtapa1` exige `caixas` e `validarEtap
   4. `pedidoGeracao`: o que vai em "Sistema PDV", "Quantidade de lojas" e "Quantidade de PDVs" quando não houver TEF;
   5. atualizar o contrato, publicar e avisar a sessão Site. Os testes do site (`testes/site.test.js`) passam a conferir esses corpos com a
      `lib/` assim que ela aceitar a etapa 1 sem `caixas`.
+
+**17/10/2026, 15h32 (Operação) e gravação no site:** o n8n aceita caixas, sistema PDV e lojas vazios sem TEF e recusa `c6pay` sem `tef`
+(`422` `produtos` `c6pay_sem_tef`, aviso `docs/aviso_site_regras_tef_1710.md`). Os testes do site passam com a `lib/` publicada (901606e),
+inclusive os envios sem TEF. O site mostra uma mensagem para `c6pay_sem_tef` nas duas etapas. Versão gravada na `main`; a chave segue desligada.

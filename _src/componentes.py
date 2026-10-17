@@ -312,7 +312,7 @@ var MSG={nome:{obrigatorio:'Informe seu nome completo.',invalido:'Informe seu no
  caixas:{obrigatorio:'Informe o número de caixas.',invalido:'Use um número de 1 a 999.'},
  consentimento_lgpd:{obrigatorio:'Para continuar, marque a concordância com o uso dos dados.',invalido:'Para continuar, marque a concordância com o uso dos dados.'},
  razao_social:{obrigatorio:'Informe a razão social.',invalido:'Confira a razão social.'},sistema_pdv:{obrigatorio:'Informe o sistema PDV (ou "nenhum").',invalido:'Confira o sistema PDV.'},
- lojas:{obrigatorio:'Informe o número de lojas.',invalido:'Use um número de 1 a 999.'},produtos:{obrigatorio:'Escolha pelo menos uma opção.',invalido:'Escolha pelo menos uma opção.'},
+ lojas:{obrigatorio:'Informe o número de lojas.',invalido:'Use um número de 1 a 999.'},produtos:{obrigatorio:'Escolha pelo menos uma opção.',invalido:'Escolha pelo menos uma opção.',c6pay_sem_tef:'O C6 Pay é oferecido junto com o TEF integrado ao caixa. Marque também "TEF integrado ao caixa".'},
  faixa_link:{obrigatorio:'Escolha o volume de transações por mês.',invalido:'Escolha o volume de transações por mês.'},vendas_cartao:{obrigatorio:'Escolha quanto vende no cartão.',invalido:'Escolha quanto vende no cartão.'},
  recebimento:{obrigatorio:'Escolha o prazo de recebimento.',invalido:'Escolha o prazo de recebimento.'}};
 var ALVO={nome:'f-nome',whatsapp:'f-whatsapp',email:'f-email',cnpj:'f-cnpj',caixas:'f-caixas',consentimento_lgpd:'f-lgpd',razao_social:'f-razao',sistema_pdv:'f-sistema',lojas:'f-lojas',produtos:'g-produtos',faixa_link:'f-faixa',vendas_cartao:'c-vendas',recebimento:'c-receb'};
@@ -414,7 +414,7 @@ f2.addEventListener('submit',function(e){e.preventDefault();limpaErros(f2);s2.te
  b2.disabled=true;s2.textContent='Enviando…';
  envia(E2,c).then(function(x){var j=x.j;b2.disabled=false;s2.textContent='';
   if((x.status===200&&j.ok)||j.erro==='ja_enviado'){$('v-email').textContent=j.email||st.email||'';$('t-escalonar').hidden=!j.escalonar;if(st.adicional){$('l-pdvet-adicional').href=st.adicional;$('pdvet-adicional').hidden=false}st={};salva();mostra('pf-fim');return}
-  if(x.status===422&&j.erros){marca(j.erros);return}
+  if(x.status===422&&j.erros){if(j.erros.some(function(y){return y.erro==='c6pay_sem_tef'})){s2.textContent=MSG.produtos.c6pay_sem_tef+' Volte à etapa 1 para ajustar.';return}marca(j.erros);return}
   if(j.erro==='pedido_nao_encontrado'){st={};salva();s2.textContent='Não encontramos seu pedido. Preencha a etapa 1 de novo.';setTimeout(function(){mostra('pf-e1')},2500);return}
   s2.textContent=j.mensagem||FALHA}).catch(function(){b2.disabled=false;s2.textContent=FALHA})});
 

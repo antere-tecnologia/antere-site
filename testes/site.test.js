@@ -26,7 +26,7 @@ let lib = null;
 try { lib = require(path.join(__dirname, '..', '..', 'antere-automacao', 'n8n', 'lib', 'formulario_site.js')); } catch (e) { lib = null; }
 // 17/10: os produtos passaram para a etapa 1 (contrato publicado pela Operação às 10h50). Só confere os corpos com a lib que já tiver o
 // contrato novo (aceita a etapa 1 com produtos); com a lib antiga, essa conferência fica de fora.
-const libNova = !!(lib && lib.validarEtapa1({ nome: 'Ana Lima', whatsapp: '11987654321', email: 'a@b.com.br', cnpj: '11222333000181', caixas: 1, produtos: ['c6pay'], consentimento_lgpd: true }).ok);
+const libNova = !!(lib && lib.validarEtapa1({ nome: 'Ana Lima', whatsapp: '11987654321', email: 'a@b.com.br', cnpj: '11222333000181', caixas: 1, produtos: ['tef', 'c6pay'], consentimento_lgpd: true }).ok);
 // 18/10: sem TEF, o site não manda caixas (etapa 1) nem sistema_pdv/lojas (etapa 2). Só confere esses corpos com a lib que já aceitar isso.
 const libSemTef = !!(libNova && lib.validarEtapa1({ nome: 'Ana Lima', whatsapp: '11987654321', email: 'a@b.com.br', cnpj: '11222333000181', produtos: ['link'], consentimento_lgpd: true }).ok);
 const confereLib = (corpo, produtos) => libNova && ((produtos || corpo.produtos || []).includes('tef') || libSemTef);
@@ -270,6 +270,22 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     assert.ok(!('caixas' in reqs[0].corpo), 'sem TEF, caixas não vai');
     assert.ok(await p.isHidden('#c-tef') && await p.isHidden('#f-sistema') && await p.isHidden('#f-lojas'), 'sem TEF, sem sistema PDV e lojas');
     await ctx.close();
+  });
+
+  await t('formulário: erro c6pay_sem_tef do n8n (etapa 1 e etapa 2) mostra "O C6 Pay é oferecido junto com o TEF…"', async () => {
+    const r422 = { status: 422, body: { ok: false, erro: 'validacao', erros: [{ campo: 'produtos', erro: 'c6pay_sem_tef' }] } };
+    const x = await contexto(b, { webhooks: () => r422 }); const p = await x.ctx.newPage();
+    await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, ['tef', 'c6pay']); await p.click('#b1');
+    await p.waitForFunction(() => document.getElementById('e-produtos').textContent.length > 0);
+    assert.strictEqual(await p.textContent('#e-produtos'), 'O C6 Pay é oferecido junto com o TEF integrado ao caixa. Marque também "TEF integrado ao caixa".');
+    assert.strictEqual(await p.getAttribute('#g-produtos', 'aria-invalid'), 'true'); assert.strictEqual((await eventos(p, 'conversion')).length, 0);
+    await x.ctx.close();
+    const y = await contexto(b, { webhooks: (url, c) => url === E1 ? etapa1Ok(EMP)(url, c) : r422 }); const q = await y.ctx.newPage();
+    await q.goto(BASE + '/proposta.html?previa=1'); await preencheE1(q, ['tef', 'c6pay']); await q.click('#b1'); await q.waitForSelector('#pf-e2:not([hidden])');
+    await q.fill('#f-sistema', 'Linx'); await q.fill('#f-lojas', '1'); await q.check('input[name=vendas_cartao][value=ate_8mil]'); await q.check('input[name=recebimento][value=d31]');
+    await q.click('#b2'); await q.waitForFunction(() => /C6 Pay/.test(document.getElementById('s2').textContent));
+    assert.strictEqual(await q.textContent('#s2'), 'O C6 Pay é oferecido junto com o TEF integrado ao caixa. Marque também "TEF integrado ao caixa". Volte à etapa 1 para ajustar.');
+    await y.ctx.close();
   });
 
   await t('formulário: CNPJ não consultado pede a razão social digitada; "Corrigir" abre o campo', async () => {
