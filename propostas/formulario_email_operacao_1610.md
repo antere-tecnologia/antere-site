@@ -100,6 +100,6 @@ lote com `lead_id` e `token`.
 publicação desse patch no n8n.**
 
 **17/10/2026, fim do dia:** a Operação publicou no n8n o Formulario_Site_Proposta 03852d6f, que aceita a etapa 2 sem `conta_pj_c6` (merge
-na `main` do `antere-automacao` em c349255). O Rodrigo fez o teste de ponta a ponta com `?previa=1` e passou. A chave do formulário foi
+na `main` do `antere-automacao` em c349255). O Rodrigo fez o teste de ponta a ponta com `?previa=1` e passou (proposta gerada às 03h19, com origem e UTM corretas). A chave do formulário foi
 ligada (`window.ANTERE_FORM_NOVO = true`). Seguem pendentes, do lado da Operação: a conferência de MX na etapa 1 (`dominio_sem_email`), o
 endpoint `form-proposta-dados` e o token nos links de lote e campanha.

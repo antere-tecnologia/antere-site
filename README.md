@@ -16,7 +16,7 @@ Google Ads (09/10/2026): tag `gtag.js` com o ID `AW-18479570694` no `<head>` de 
 
 ## Chave do formulário de proposta em 2 etapas (15/10/2026)
 
-O formulário novo (`public/proposta.html`, contrato em `antere-automacao/docs/contrato_formulario_site.md`) está **ligado desde 17/10/2026**, depois do teste de ponta a ponta do Rodrigo com `?previa=1` (n8n: Formulario_Site_Proposta 03852d6f, que aceita a etapa 2 sem `conta_pj_c6`; merge na `main` do `antere-automacao` em c349255).
+O formulário novo (`public/proposta.html`, contrato em `antere-automacao/docs/contrato_formulario_site.md`) está **ligado desde 17/10/2026**, depois do teste de ponta a ponta do Rodrigo com `?previa=1` (proposta gerada às 03h19 de 17/10, com origem e UTM corretas; n8n: Formulario_Site_Proposta 03852d6f, que aceita a etapa 2 sem `conta_pj_c6`; merge na `main` do `antere-automacao` em c349255).
 
 - **Onde fica:** `public/site-config.js`, linha `window.ANTERE_FORM_NOVO = true;` (no gerador, `SITE_CONFIG_JS` em `_src/componentes.py`). O arquivo fica fora de `assets/` de propósito: `assets/` tem cache de 1 ano. Ele carrega no `<head>` de todas as páginas (nas de `legal/`, pelo endereço completo `https://www.antere.com.br/site-config.js`, porque elas também abrem em `legal.antere.com.br`).
 - **Ligada (`true`, o estado atual):** os 20 botões "Quero minha proposta" levam a `/proposta.html` com os mesmos `ref` e UTM (a troca é feita por script; sem JavaScript, o link do HTML ainda leva ao formulário antigo). O clique não conta conversão; a conversão `AW-18479570694/4-TPCPzV6ZcdEIa-3-tE` dispara no envio com sucesso da etapa 1.
