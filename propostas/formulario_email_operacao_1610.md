@@ -103,3 +103,38 @@ publicação desse patch no n8n.**
 na `main` do `antere-automacao` em c349255). O Rodrigo fez o teste de ponta a ponta com `?previa=1` e passou (proposta gerada às 03h19, com origem e UTM corretas). A chave do formulário foi
 ligada (`window.ANTERE_FORM_NOVO = true`). Seguem pendentes, do lado da Operação: a conferência de MX na etapa 1 (`dominio_sem_email`), o
 endpoint `form-proposta-dados` e o token nos links de lote e campanha.
+
+## 17/10/2026: produtos na etapa 1 (pedido do Rodrigo) — proposta de contrato para a Operação
+
+**Estado:** pronto no site, num branch, **não publicado**. A chave do formulário está ligada desde 46646fa, então esta mudança só pode ir
+para a `main` do site junto com a publicação do contrato novo no n8n (senão o formulário no ar quebra).
+
+### Etapa 1
+
+| Campo | Mudança |
+|---|---|
+| `produtos` | **novo, obrigatório:** lista com 1 a 4 de `tef`, `c6pay`, `link`, `pdvet` (pergunta "O que você procura?", múltipla escolha). |
+| `caixas` | **sai da etapa 1** (vai para a etapa 2, só com `tef`). |
+| `procura` | O site continua mandando, por compatibilidade: `pdvet` quando `produtos` é só `["pdvet"]`, senão `c6pay`. Pode ser ignorado quando o n8n usar `produtos`. |
+
+- Resposta: `proximo: "pdvet"` (com `url`) quando `produtos` é só `["pdvet"]`; `proximo: "etapa2"` em qualquer outro caso, inclusive PDVet com
+  outro produto. O n8n guarda `produtos` no pedido, para a etapa 2.
+- A conversão do Google Ads continua no envio com sucesso da etapa 1 (os dois casos).
+
+### Etapa 2
+
+- Sai a pergunta "Produtos". O site manda `produtos` (a mesma lista da etapa 1, para conferência) e só os campos dos produtos escolhidos:
+
+| Produto | Campos (todos obrigatórios quando o produto foi escolhido) |
+|---|---|
+| sempre | `lead_id`, `pedido_token`, `razao_social`, `produtos`, `website` (isca, vazio) |
+| `tef` | `sistema_pdv` (texto até 80), `lojas` (1 a 999), `caixas` (1 a 999) |
+| `c6pay` | `vendas_cartao` (`ate_8mil`, `8_30mil`, `acima_30mil`) e `recebimento` (`d1`, `d31`) |
+| `link` | `faixa_link` (as 8 faixas de hoje; `acima_10000` = escalonar) |
+| `pdvet` | nenhum campo a mais |
+
+- Mudança de sentido: `vendas_cartao` e `recebimento` passam a ser do **C6 Pay** (antes vinham com o TEF). `sistema_pdv` e `lojas` deixam de
+  ser sempre obrigatórios: só com `tef`.
+- **Pedido à Operação:** atualizar `validarEtapa1`/`validarEtapa2` (`lib/formulario_site.js`), o `pedidoGeracao` (o que a Geração usa quando
+  não houver `sistema_pdv`/`lojas`, por exemplo só C6 Pay ou só link) e o contrato; publicar e avisar a sessão Site, que então grava na
+  `main` a versão do branch (testes prontos: `testes/site.test.js`, com conferência pela `lib/` assim que ela tiver o contrato novo).

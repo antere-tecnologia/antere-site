@@ -24,6 +24,9 @@ const LEGAIS = ['legal/privacidade.html', 'legal/termos.html', 'legal/exclusao-d
 const CNPJ = '11.222.333/0001-81';
 let lib = null;
 try { lib = require(path.join(__dirname, '..', '..', 'antere-automacao', 'n8n', 'lib', 'formulario_site.js')); } catch (e) { lib = null; }
+// 17/10: os produtos passaram para a etapa 1 (contrato novo, a combinar com a Operação). Só confere os corpos com a lib que já tiver o
+// contrato novo (aceita a etapa 1 sem caixas e com produtos); com a lib antiga, essa conferência fica de fora.
+const libNova = !!(lib && lib.validarEtapa1({ nome: 'Ana Lima', whatsapp: '11987654321', email: 'a@b.com.br', cnpj: '11222333000181', produtos: ['c6pay'], consentimento_lgpd: true }).ok);
 
 let ok = 0, falhas = 0;
 async function t(nome, f) {
@@ -123,22 +126,25 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
   });
 
   // ---------------- formulário (?previa=1, webhooks simulados) ----------------
-  const etapa1Ok = (empresa, procura) => (url, c) => url === E1
-    ? (procura === 'pdvet' ? { status: 200, body: { ok: true, lead_id: 'a'.repeat(24), pedido_token: '', proximo: 'pdvet', url: 'https://portal.pdvet.com.br/cadastro', empresa } }
+  const soPdvet = (c) => Array.isArray(c.produtos) && c.produtos.length === 1 && c.produtos[0] === 'pdvet';
+  const etapa1Ok = (empresa) => (url, c) => url === E1
+    ? (soPdvet(c) ? { status: 200, body: { ok: true, lead_id: 'a'.repeat(24), pedido_token: '', proximo: 'pdvet', url: 'https://portal.pdvet.com.br/cadastro', empresa } }
       : { status: 200, body: { ok: true, lead_id: 'a'.repeat(24), pedido_token: 'b'.repeat(32), proximo: 'etapa2', empresa } })
     : { status: 200, body: { ok: true, status: 'proposta_enviada', email: c.lead_id ? 'maria@empresa.com.br' : '', escalonar: c.faixa_link === 'acima_10000' } };
-  async function preencheE1(p, procura) {
+  // produtos: lista de tef, c6pay, link e pdvet ('c6pay' sozinho = ['c6pay'])
+  async function preencheE1(p, produtos) {
     await p.fill('#f-nome', 'Maria da Silva'); await p.type('#f-whatsapp', '11987654321'); await p.fill('#f-email', 'maria@empresa.com.br');
-    await p.type('#f-cnpj', CNPJ.replace(/\D/g, '')); await p.fill('#f-caixas', '3');
-    await p.check('input[name=procura][value=' + procura + ']'); await p.check('#f-lgpd');
+    await p.type('#f-cnpj', CNPJ.replace(/\D/g, ''));
+    for (const v of [].concat(produtos)) await p.check('input[name=produtos][value=' + v + ']');
+    await p.check('#f-lgpd');
   }
   const EMP = { cnpj_confirmado: true, razao_social: 'EMPRESA EXEMPLO LTDA', cidade: 'São Paulo', uf: 'SP' };
 
   await t('formulário: validação na tela antes de enviar (vazio e CNPJ com dígito errado)', async () => {
-    const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP, 'c6pay') }); const p = await ctx.newPage();
+    const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP) }); const p = await ctx.newPage();
     await p.goto(BASE + '/proposta.html?previa=1');
     await p.click('#b1');
-    for (const c of ['nome', 'whatsapp', 'email', 'cnpj', 'caixas', 'procura', 'consentimento_lgpd']) assert.ok((await p.textContent('#e-' + c)).length > 0, c);
+    for (const c of ['nome', 'whatsapp', 'email', 'cnpj', 'produtos', 'consentimento_lgpd']) assert.ok((await p.textContent('#e-' + c)).length > 0, c);
     await preencheE1(p, 'c6pay'); await p.fill('#f-cnpj', ''); await p.type('#f-cnpj', '11222333000182'); await p.click('#b1');
     assert.match(await p.textContent('#e-cnpj'), /não batem/);
     assert.strictEqual(await p.inputValue('#f-whatsapp'), '(11) 98765-4321');
@@ -146,20 +152,27 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     await ctx.close();
   });
 
-  await t('formulário C6 Pay: etapa 1 → conversão → etapa 2 (empresa consultada, campos condicionais) → tela final', async () => {
-    const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP, 'c6pay'), viewport: { width: 390, height: 844 } }); const p = await ctx.newPage();
+  await t('formulário: os 4 produtos na etapa 1 → conversão → etapa 2 só com os campos dos produtos escolhidos → tela final', async () => {
+    const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP), viewport: { width: 390, height: 844 } }); const p = await ctx.newPage();
     await p.goto(BASE + '/?utm_source=google&utm_medium=cpc&utm_campaign=pagamento_integrado&gclid=XYZ');
     await p.goto(BASE + '/proposta.html?previa=1&ref=site_institucional');
     assert.strictEqual(await p.locator('#wa-float').count(), 0, 'botão flutuante dentro do formulário');
     assert.strictEqual(await p.textContent('.pf-destaque'), 'C6 Pay: crédito a partir de 1,84% recebendo em 31 dias, débito a partir de 0,82% e Pix grátis e ilimitado.');
-    assert.strictEqual((await p.textContent('#g-procura label:first-of-type')).trim(), 'C6 Pay: crédito a partir de 1,84% recebendo em 31 dias, débito a partir de 0,82% e Pix grátis');
-    await preencheE1(p, 'c6pay'); await p.click('#b1');
+    assert.deepStrictEqual(await p.$$eval('#g-produtos label', ls => ls.map(l => [l.querySelector('input').type, l.querySelector('input').value, l.textContent.trim()])), [
+      ['checkbox', 'tef', 'TEF integrado ao caixa'],
+      ['checkbox', 'c6pay', 'C6 Pay: crédito a partir de 1,84% recebendo em 31 dias, débito a partir de 0,82% e Pix grátis'],
+      ['checkbox', 'link', 'Link de pagamento / pagamento online'],
+      ['checkbox', 'pdvet', 'Sistema PDV (PDVet)']]);
+    assert.strictEqual(await p.locator('#pf-e1 #f-caixas').count(), 0, 'caixas saiu da etapa 1');
+    await preencheE1(p, ['tef', 'c6pay', 'link', 'pdvet']); await p.click('#b1');
     await p.waitForSelector('#pf-e2:not([hidden])');
     const c1 = reqs[0].corpo;
-    assert.deepStrictEqual([c1.nome, c1.whatsapp, c1.email, c1.cnpj, c1.caixas, c1.procura, c1.consentimento_lgpd, c1.website], ['Maria da Silva', '(11) 98765-4321', 'maria@empresa.com.br', '11222333000181', 3, 'c6pay', true, '']);
+    assert.deepStrictEqual([c1.nome, c1.whatsapp, c1.email, c1.cnpj, c1.produtos, c1.procura, c1.consentimento_lgpd, c1.website], ['Maria da Silva', '(11) 98765-4321', 'maria@empresa.com.br', '11222333000181', ['tef', 'c6pay', 'link', 'pdvet'], 'c6pay', true, '']);
+    assert.ok(!('caixas' in c1), 'caixas não vai na etapa 1');
     assert.deepStrictEqual([c1.utm_source, c1.utm_medium, c1.utm_campaign, c1.gclid, c1.ref], ['google', 'cpc', 'pagamento_integrado', 'XYZ', 'site_institucional']);
-    if (lib) assert.ok(lib.validarEtapa1(c1).ok, JSON.stringify(lib.validarEtapa1(c1)));
+    if (libNova) assert.ok(lib.validarEtapa1(c1).ok, JSON.stringify(lib.validarEtapa1(c1)));
     const conv = await eventos(p, 'conversion'); assert.strictEqual(conv.length, 1); assert.strictEqual(conv[0].send_to, SEND_TO);
+    assert.strictEqual(await p.textContent('#pf-e2 .eyebrow'), 'Etapa 2 de 2');
     assert.strictEqual(await p.textContent('#v-razao'), 'EMPRESA EXEMPLO LTDA'); assert.strictEqual(await p.textContent('#v-cnpj'), CNPJ); assert.strictEqual(await p.textContent('#v-cidade'), 'São Paulo/SP');
     assert.ok(await p.isHidden('#c-razao'));
     // 17/10: "✓ Dados corretos" (preenchido) e "Corrigir" (contorno), pequenos e lado a lado no celular; sem a pergunta da conta PJ
@@ -169,23 +182,22 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     assert.ok(Math.abs(bc.y - bk.y) < 1 && bk.x > bc.x + bc.width - 1, 'lado a lado'); for (const x of [bc, bk]) assert.ok(x.height >= 34 && x.height <= 38, 'altura ' + x.height);
     assert.ok(await p.evaluate(() => [...document.querySelectorAll('#acoes-empresa .btn')].every(b => b.scrollWidth <= b.clientWidth + 1 && b.getBoundingClientRect().height < 40)), 'quebrou linha');
     assert.strictEqual(await p.locator('input[name=conta_pj_c6]').count(), 0); assert.ok(!/conta PJ|isenta/i.test(await p.textContent('#pf-e2')));
+    assert.strictEqual(await p.locator('#pf-e2 input[name=produtos]').count(), 0, 'a etapa 2 não pergunta mais os produtos');
     await p.click('#b-correto'); assert.ok(await p.isVisible('#m-correto'));
-    assert.ok(await p.isHidden('#c-faixa') && await p.isHidden('#c-vendas') && await p.isHidden('#c-receb'));
-    await p.check('input[name=produtos][value=link]');
-    assert.ok(await p.isVisible('#c-faixa') && await p.isHidden('#c-vendas') && await p.isHidden('#c-receb'), 'só link');
-    await p.uncheck('input[name=produtos][value=link]'); await p.check('input[name=produtos][value=tef]');
-    assert.ok(await p.isHidden('#c-faixa') && await p.isVisible('#c-vendas') && await p.isVisible('#c-receb'), 'só TEF');
+    assert.ok(await p.isVisible('#c-tef') && await p.isVisible('#c-c6') && await p.isVisible('#c-link'));
     assert.strictEqual(await p.locator('#f-faixa option[value]:not([value=""])').count(), 8);
-    await p.check('input[name=produtos][value=link]');
-    await p.fill('#f-sistema', 'PDVet'); await p.fill('#f-lojas', '2'); await p.selectOption('#f-faixa', '201_600');
+    await p.click('#b2');
+    for (const c of ['sistema_pdv', 'lojas', 'caixas', 'vendas_cartao', 'recebimento', 'faixa_link']) assert.ok((await p.textContent('#e-' + c)).length > 0, c);
+    assert.strictEqual(reqs.length, 1);
+    await p.fill('#f-sistema', 'PDVet'); await p.fill('#f-lojas', '2'); await p.fill('#f-caixas', '3'); await p.selectOption('#f-faixa', '201_600');
     await p.check('input[name=vendas_cartao][value="8_30mil"]'); await p.check('input[name=recebimento][value=d1]');
     assert.match(await p.textContent('#pf-e2'), /Se você parar aqui, tudo bem: nossa equipe comercial entra em contato para completar\./);
     assert.ok(!/me ligue/i.test(await p.textContent('main')));
     await p.click('#b2'); await p.waitForSelector('#pf-fim:not([hidden])');
     const c2 = reqs[1].corpo;
-    assert.deepStrictEqual(c2, { lead_id: 'a'.repeat(24), pedido_token: 'b'.repeat(32), razao_social: 'EMPRESA EXEMPLO LTDA', sistema_pdv: 'PDVet', lojas: 2, produtos: ['tef', 'link'], website: '', faixa_link: '201_600', vendas_cartao: '8_30mil', recebimento: 'd1' });
+    assert.deepStrictEqual(c2, { lead_id: 'a'.repeat(24), pedido_token: 'b'.repeat(32), razao_social: 'EMPRESA EXEMPLO LTDA', produtos: ['tef', 'c6pay', 'link', 'pdvet'], website: '', sistema_pdv: 'PDVet', lojas: 2, caixas: 3, vendas_cartao: '8_30mil', recebimento: 'd1', faixa_link: '201_600' });
     assert.ok(!('conta_pj_c6' in c2), 'conta_pj_c6 saiu do contrato em 17/10');
-    if (lib && !/conta_pj_c6: conta|conta_pj_c6', erro/.test(fs.readFileSync(require.resolve(path.join(__dirname, '..', '..', 'antere-automacao', 'n8n', 'lib', 'formulario_site.js')), 'utf8'))) assert.ok(lib.validarEtapa2(c2, { lead_id: c2.lead_id, pedido_token: c2.pedido_token, procura: 'c6pay' }).ok);
+    if (libNova) assert.ok(lib.validarEtapa2(c2, { lead_id: c2.lead_id, pedido_token: c2.pedido_token, procura: 'c6pay', produtos: c2.produtos }).ok);
     assert.strictEqual(await p.textContent('#pf-fim h1'), 'Sua proposta foi enviada.');
     assert.strictEqual(await p.textContent('#v-email'), 'maria@empresa.com.br');
     assert.match(await p.textContent('#t-fim'), /Spam e Promoções/);
@@ -195,25 +207,59 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     await ctx.close();
   });
 
+  await t('formulário: pelo menos um produto; só PDVet vai ao cadastro da PDVet; PDVet com outro produto vai à etapa 2; a etapa 2 mostra só os campos de cada produto', async () => {
+    const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP) }); const p = await ctx.newPage();
+    await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, []); await p.click('#b1');
+    assert.strictEqual(await p.textContent('#e-produtos'), 'Escolha pelo menos uma opção.'); assert.strictEqual(reqs.length, 0);
+    await ctx.close();
+    const casos = [
+      [['pdvet'], 'pdvet', null],
+      [['link', 'pdvet'], 'c6pay', { tef: false, c6: false, link: true }],
+      [['c6pay'], 'c6pay', { tef: false, c6: true, link: false }],
+      [['tef'], 'c6pay', { tef: true, c6: false, link: false }],
+      [['tef', 'pdvet'], 'c6pay', { tef: true, c6: false, link: false }],
+    ];
+    for (const [prods, procura, grupos] of casos) {
+      const x = await contexto(b, { webhooks: etapa1Ok(EMP) }); const q = await x.ctx.newPage();
+      await q.goto(BASE + '/proposta.html?previa=1'); await preencheE1(q, prods); await q.click('#b1');
+      if (!grupos) { await q.waitForSelector('#pf-pdvet:not([hidden])'); assert.strictEqual(await q.getAttribute('#l-pdvet', 'href'), 'https://portal.pdvet.com.br/cadastro'); }
+      else {
+        await q.waitForSelector('#pf-e2:not([hidden])');
+        assert.deepStrictEqual({ tef: await q.isVisible('#c-tef'), c6: await q.isVisible('#c-c6'), link: await q.isVisible('#c-link') }, grupos, prods.join('+'));
+        if (grupos.tef) { await q.fill('#f-sistema', 'Linx'); await q.fill('#f-lojas', '1'); await q.fill('#f-caixas', '2'); }
+        if (grupos.c6) { await q.check('input[name=vendas_cartao][value=ate_8mil]'); await q.check('input[name=recebimento][value=d31]'); }
+        if (grupos.link) await q.selectOption('#f-faixa', 'ate_200');
+        await q.click('#b2'); await q.waitForSelector('#pf-fim:not([hidden])');
+        const c2 = x.reqs[1].corpo, campos = Object.keys(c2).sort();
+        const esperados = ['lead_id', 'pedido_token', 'produtos', 'razao_social', 'website'].concat(grupos.tef ? ['caixas', 'lojas', 'sistema_pdv'] : [], grupos.c6 ? ['recebimento', 'vendas_cartao'] : [], grupos.link ? ['faixa_link'] : []).sort();
+        assert.deepStrictEqual(campos, esperados, prods.join('+'));
+        if (libNova) assert.ok(lib.validarEtapa2(c2, { lead_id: c2.lead_id, pedido_token: c2.pedido_token, procura: 'c6pay', produtos: c2.produtos }).ok, prods.join('+'));
+      }
+      assert.deepStrictEqual([x.reqs[0].corpo.produtos, x.reqs[0].corpo.procura], [prods, procura]);
+      assert.strictEqual((await eventos(q, 'conversion')).length, 1, 'conversão no envio da etapa 1: ' + prods.join('+'));
+      await x.ctx.close();
+    }
+  });
+
   await t('formulário: CNPJ não consultado pede a razão social digitada; "Corrigir" abre o campo', async () => {
-    const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok({ cnpj_confirmado: false, razao_social: '', cidade: '', uf: '' }, 'c6pay') }); const p = await ctx.newPage();
-    await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, 'c6pay'); await p.click('#b1'); await p.waitForSelector('#pf-e2:not([hidden])');
+    const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok({ cnpj_confirmado: false, razao_social: '', cidade: '', uf: '' }) }); const p = await ctx.newPage();
+    await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, ['link']); await p.click('#b1'); await p.waitForSelector('#pf-e2:not([hidden])');
     assert.ok(await p.isHidden('#bloco-empresa')); assert.ok(await p.isVisible('#f-razao'));
-    await p.fill('#f-sistema', 'Nenhum'); await p.fill('#f-lojas', '1'); await p.check('input[name=produtos][value=link]'); await p.selectOption('#f-faixa', 'acima_10000');
+    await p.selectOption('#f-faixa', 'acima_10000');
     await p.click('#b2'); assert.strictEqual(await p.textContent('#e-razao_social'), 'Informe a razão social.'); assert.strictEqual(reqs.length, 1);
     await p.fill('#f-razao', 'Minha Empresa Ltda'); await p.click('#b2'); await p.waitForSelector('#pf-fim:not([hidden])');
     assert.strictEqual(reqs[1].corpo.razao_social, 'Minha Empresa Ltda'); assert.ok(!('conta_pj_c6' in reqs[1].corpo)); assert.ok(!('vendas_cartao' in reqs[1].corpo)); assert.ok(await p.isVisible('#t-escalonar'));
     await ctx.close();
-    const x = await contexto(b, { webhooks: etapa1Ok(EMP, 'c6pay') }); const p2 = await x.ctx.newPage();
-    await p2.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p2, 'c6pay'); await p2.click('#b1'); await p2.waitForSelector('#pf-e2:not([hidden])');
+    const x = await contexto(b, { webhooks: etapa1Ok(EMP) }); const p2 = await x.ctx.newPage();
+    await p2.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p2, ['tef', 'c6pay']); await p2.click('#b1'); await p2.waitForSelector('#pf-e2:not([hidden])');
     await p2.click('#b-corrigir'); assert.ok(await p2.isVisible('#f-razao')); await p2.fill('#f-razao', 'Nome Corrigido SA');
-    await p2.fill('#f-sistema', 'Linx'); await p2.fill('#f-lojas', '1'); await p2.check('input[name=produtos][value=tef]'); await p2.check('input[name=vendas_cartao][value=ate_8mil]'); await p2.check('input[name=recebimento][value=d31]');
+    await p2.fill('#f-sistema', 'Linx'); await p2.fill('#f-lojas', '1'); await p2.fill('#f-caixas', '1'); await p2.check('input[name=vendas_cartao][value=ate_8mil]'); await p2.check('input[name=recebimento][value=d31]');
     await p2.click('#b2'); await p2.waitForSelector('#pf-fim:not([hidden])'); assert.strictEqual(x.reqs[1].corpo.razao_social, 'Nome Corrigido SA'); assert.ok(!('faixa_link' in x.reqs[1].corpo));
     await x.ctx.close();
   });
 
   await t('formulário PDVet: tela "Seu contato está registrado" com o botão para o portal da PDVet; 1 conversão', async () => {
-    const { ctx } = await contexto(b, { webhooks: etapa1Ok(EMP, 'pdvet') }); const p = await ctx.newPage();
+    const { ctx } = await contexto(b, { webhooks: etapa1Ok(EMP) }); const p = await ctx.newPage();
     await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, 'pdvet'); await p.click('#b1'); await p.waitForSelector('#pf-pdvet:not([hidden])');
     assert.strictEqual(await p.textContent('#pf-pdvet h1'), 'Seu contato está registrado.');
     assert.match(await p.textContent('#pf-pdvet'), /Para conhecer e contratar o sistema PDV, continue no formulário da PDVet\./);
@@ -260,7 +306,7 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
         const u = new URL(r.request().url());
         if (u.origin === BASE) { const f = u.pathname.slice(1) || 'index.html'; return r.fulfill({ body: fs.readFileSync(path.join(PUB, f)), contentType: f.endsWith('.js') ? 'application/javascript' : 'text/html' }); }
         if (u.href.startsWith(E1) || u.href.startsWith(E2)) { await new Promise(z => setTimeout(z, 300)); const c = JSON.parse(r.request().postData() || '{}');
-          const resp = u.href.startsWith(E1) && modo === '422' ? { status: 422, body: { ok: false, erro: 'validacao', erros: [{ campo: 'email', erro: 'dominio_sem_email', sugestao: 'empresa.com.br' }] } } : etapa1Ok(EMP, modo === 'pdvet' ? 'pdvet' : 'c6pay')(u.href.startsWith(E1) ? E1 : E2, c);
+          const resp = u.href.startsWith(E1) && modo === '422' ? { status: 422, body: { ok: false, erro: 'validacao', erros: [{ campo: 'email', erro: 'dominio_sem_email', sugestao: 'empresa.com.br' }] } } : etapa1Ok(EMP)(u.href.startsWith(E1) ? E1 : E2, c);
           return r.fulfill({ status: resp.status, body: JSON.stringify(resp.body), contentType: 'application/json' }); }
         return r.abort();
       });
@@ -272,10 +318,10 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
       await abre(); modo = '422'; await preencheE1(p, 'c6pay'); await p.click('#b1'); await p.waitForTimeout(80); probs.push(...await auditar(p, nome('carregando etapa 1')));
       await p.waitForFunction(() => document.getElementById('e-email').textContent.length > 0); probs.push(...await auditar(p, nome('422')));
       await abre(); modo = 'pdvet'; await preencheE1(p, 'pdvet'); await p.click('#b1'); await p.waitForSelector('#pf-pdvet:not([hidden])'); probs.push(...await auditar(p, nome('PDVet')));
-      await abre(); modo = 'etapa2'; await preencheE1(p, 'c6pay'); await p.click('#b1'); await p.waitForSelector('#pf-e2:not([hidden])');
-      await p.check('input[name=produtos][value=tef]'); await p.check('input[name=produtos][value=link]'); probs.push(...await auditar(p, nome('etapa 2')));
+      await abre(); modo = 'etapa2'; await preencheE1(p, ['tef', 'c6pay', 'link']); await p.click('#b1'); await p.waitForSelector('#pf-e2:not([hidden])');
+      probs.push(...await auditar(p, nome('etapa 2')));
       await p.click('#b2'); probs.push(...await auditar(p, nome('erros da etapa 2'))); await p.click('#b-corrigir'); probs.push(...await auditar(p, nome('corrigir')));
-      await p.fill('#f-sistema', 'PDVet'); await p.fill('#f-lojas', '2'); await p.selectOption('#f-faixa', '201_600'); await p.check('input[name=vendas_cartao][value="8_30mil"]'); await p.check('input[name=recebimento][value=d1]');
+      await p.fill('#f-sistema', 'PDVet'); await p.fill('#f-lojas', '2'); await p.fill('#f-caixas', '3'); await p.selectOption('#f-faixa', '201_600'); await p.check('input[name=vendas_cartao][value="8_30mil"]'); await p.check('input[name=recebimento][value=d1]');
       await p.click('#b2'); await p.waitForTimeout(80); probs.push(...await auditar(p, nome('carregando etapa 2')));
       await p.waitForSelector('#pf-fim:not([hidden])'); probs.push(...await auditar(p, nome('tela final')));
       await ctx.close();
@@ -293,7 +339,7 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     await ctx.close();
   });
   await t('e-mail: a sugestão não troca sozinha; envio com erro comum espera a resposta; "Sim, trocar" e "Não, está certo" seguem', async () => {
-    const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP, 'pdvet') }); const p = await ctx.newPage();
+    const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP) }); const p = await ctx.newPage();
     await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, 'pdvet'); await p.fill('#f-email', 'maria@gmial.com');
     await p.click('#b1'); assert.ok(await p.isVisible('#sug-email')); assert.strictEqual(reqs.length, 0, 'enviou sem a resposta do lead');
     assert.strictEqual(await p.inputValue('#f-email'), 'maria@gmial.com', 'trocou sozinho');
@@ -301,7 +347,7 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     await p.click('#b1'); await p.waitForSelector('#pf-pdvet:not([hidden])'); assert.strictEqual(reqs[0].corpo.email, 'maria@gmail.com');
     assert.ok(!('email_alterado' in reqs[0].corpo) && !('lead_id_cadastro' in reqs[0].corpo), 'campos de cadastro sem link de lote');
     await ctx.close();
-    const x = await contexto(b, { webhooks: etapa1Ok(EMP, 'pdvet') }); const p2 = await x.ctx.newPage();
+    const x = await contexto(b, { webhooks: etapa1Ok(EMP) }); const p2 = await x.ctx.newPage();
     await p2.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p2, 'pdvet'); await p2.fill('#f-email', 'jo@gmial.com');
     await p2.click('#b1'); await p2.click('#sug-nao'); await p2.click('#b1'); await p2.waitForSelector('#pf-pdvet:not([hidden])');
     assert.strictEqual(x.reqs[0].corpo.email, 'jo@gmial.com');
@@ -320,21 +366,21 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
   await t('e-mail: link com lead_id e token abre com nome e e-mail cadastrados, limpa a URL e manda email_alterado', async () => {
     const dados = (sp) => sp.get('lead_id') === LID && sp.get('token') === TK ? { status: 200, body: { email: 'contato@empresa.com.br', nome_contato: 'Carla Souza', empresa: 'EMPRESA EXEMPLO LTDA' } } : { status: 404, body: { ok: false } };
     for (const [novo, alterado] of [[null, false], ['carla@gmail.com', true]]) {
-      const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP, 'pdvet'), dados }); const p = await ctx.newPage();
+      const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP), dados }); const p = await ctx.newPage();
       await p.goto(BASE + '/proposta.html?previa=1&utm_source=lote&lead_id=' + LID + '&token=' + TK);
       await p.waitForFunction(() => document.getElementById('f-email').value !== '');
       assert.strictEqual(await p.inputValue('#f-email'), 'contato@empresa.com.br'); assert.strictEqual(await p.inputValue('#f-nome'), 'Carla Souza');
       const u = new URL(p.url()); assert.ok(!u.searchParams.has('lead_id') && !u.searchParams.has('token'), p.url()); assert.strictEqual(u.searchParams.get('utm_source'), 'lote');
       assert.strictEqual(reqs[0].metodo, 'GET');
-      await p.type('#f-whatsapp', '11987654321'); await p.type('#f-cnpj', '11222333000181'); await p.fill('#f-caixas', '1'); await p.check('input[name=procura][value=pdvet]'); await p.check('#f-lgpd');
+      await p.type('#f-whatsapp', '11987654321'); await p.type('#f-cnpj', '11222333000181'); await p.check('input[name=produtos][value=pdvet]'); await p.check('#f-lgpd');
       if (novo) await p.fill('#f-email', novo);
       await p.click('#b1'); await p.waitForSelector('#pf-pdvet:not([hidden])');
       const c = reqs[1].corpo;
       assert.deepStrictEqual([c.lead_id_cadastro, c.token_cadastro, c.email_alterado, c.email, c.utm_source], [LID, TK, alterado, novo || 'contato@empresa.com.br', 'lote']);
-      if (lib) assert.ok(lib.validarEtapa1(c).ok);
+      if (libNova) assert.ok(lib.validarEtapa1(c).ok);
       await ctx.close();
     }
-    const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP, 'pdvet'), dados }); const p = await ctx.newPage();
+    const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP), dados }); const p = await ctx.newPage();
     await p.goto(BASE + '/proposta.html?previa=1&lead_id=' + LID + '&token=' + 'e'.repeat(32)); await p.waitForTimeout(300);
     assert.strictEqual(await p.inputValue('#f-email'), ''); await preencheE1(p, 'pdvet'); await p.click('#b1'); await p.waitForSelector('#pf-pdvet:not([hidden])');
     assert.ok(!('lead_id_cadastro' in reqs[1].corpo), 'token inválido não manda os campos de cadastro');
@@ -438,6 +484,6 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
   });
 
   await b.close();
-  console.log(`${ok} testes ok, ${falhas} falharam` + (lib ? ' (com as regras do n8n)' : ' (sem o antere-automacao ao lado: regras do n8n não conferidas)'));
+  console.log(`${ok} testes ok, ${falhas} falharam` + (libNova ? ' (com as regras do n8n)' : lib ? ' (a lib do n8n ao lado ainda tem o contrato antigo: corpos do formulário não conferidos por ela)' : ' (sem o antere-automacao ao lado: regras do n8n não conferidas)'));
   process.exitCode = falhas ? 1 : 0;
 })();

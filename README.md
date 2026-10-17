@@ -39,6 +39,10 @@ Aprovado pelo Rodrigo para o formulário novo (proposta da Operação: `antere-a
 - **Bloco da empresa:** "✓ Dados corretos" (preenchido) e "Corrigir" (contorno), pequenos (36 px), lado a lado, sem quebrar linha.
 - **Conta PJ C6:** a pergunta saiu da etapa 2 e, desde 17/10, o campo `conta_pj_c6` também deixou de ir no envio (`CONTA_PJ_ENVIO = ""` em `_src/componentes.py`), porque saiu do contrato (Operação, commit 58cb38f do `antere-automacao`). A Operação publicou no n8n a versão que aceita a etapa 2 sem o campo (Formulario_Site_Proposta 03852d6f, merge em c349255), e o teste de ponta a ponta passou.
 
+### Formulário: produtos na etapa 1 (17/10/2026, em preparação)
+
+"O que você procura?" vira múltipla escolha com 4 opções (TEF, C6 Pay, link, PDVet; pelo menos uma). Só PDVet vai ao cadastro da PDVet; PDVet com outro produto segue para a etapa 2, que mostra só os campos dos produtos escolhidos (TEF: sistema PDV, lojas e caixas; C6 Pay: vendas no cartão e prazo de recebimento; link: volume de transações). Depende do contrato novo no n8n: proposta em `propostas/formulario_email_operacao_1610.md`. Só vai para a `main` depois da publicação da Operação.
+
 ## WhatsApp (15/10/2026)
 
 Botão flutuante "Fale com a gente" no canto inferior direito de todas as páginas, inclusive as de `legal/`, menos no formulário. Leva ao número do atendimento com IA (`WHATSAPP_NUMERO` em `_src/componentes.py`, hoje 5511955032670) com a mensagem "Olá! Vim pelo site da Antere e quero saber mais sobre as soluções." e, quando a visita veio com UTM, a linha "Origem: fonte / meio / campanha". O botão some quando estaria por cima de um botão de proposta (celular). O clique em qualquer link do WhatsApp vira o evento `whatsapp_click` do Google Ads, sem conversão.
