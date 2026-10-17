@@ -7,6 +7,7 @@ window.ANTERE_FORM_NOVO = true;  /* religada em 17/10/2026, depois do teste fina
 
 /* Chave do aviso de cookies (LGPD), README, seção "Aviso de cookies".
    false: a tag do Google Ads carrega em toda visita, como antes, e não aparece aviso.
-   true:  aparece a faixa "Aceitar" / "Recusar"; a tag só carrega depois do "Aceitar" e a escolha fica guardada no navegador.
-   Só ligar depois da validação da conversão do Google Ads. */
-window.ANTERE_COOKIES = false;
+   true:  aparece a faixa "Aceitar" / "Recusar" (Consent Mode v2): a tag carrega com os cookies de anúncios negados e o "Aceitar" os
+          libera; a escolha fica guardada no navegador.
+   Voltar para false desliga a faixa e o Consent Mode (a tag segue carregando, como antes). */
+window.ANTERE_COOKIES = true;  /* ligada em 17/10/2026, com o Consent Mode v2 (anúncios negados até o "Aceitar") */

@@ -493,11 +493,12 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
   });
 
   // ---------------- aviso de cookies (chave ANTERE_COOKIES) ----------------
-  await t('cookies: site-config.js publicado com a chave do aviso desligada', async () => {
-    assert.match(fs.readFileSync(path.join(PUB, 'site-config.js'), 'utf8'), /^window\.ANTERE_COOKIES = false;$/m);
+  await t('cookies: site-config.js publicado com a chave do aviso ligada (17/10/2026, Consent Mode v2)', async () => {
+    assert.match(fs.readFileSync(path.join(PUB, 'site-config.js'), 'utf8'), /^window\.ANTERE_COOKIES = true;/m);
+    assert.match(fs.readFileSync(path.join(SRC, 'componentes.py'), 'utf8'), /^window\.ANTERE_COOKIES = true;/m, 'gerador igual ao publicado');
   });
-  await t('cookies desligado: nada muda (tag carrega em toda página sem clique, sem faixa, sem link de preferências, nada guardado)', async () => {
-    const { ctx, gtagJs } = await contexto(b, { viewport: { width: 390, height: 844 } });
+  await t('cookies desligado (simulado, o caminho de volta): nada muda (tag carrega em toda página sem clique, sem faixa, sem link de preferências, nada guardado)', async () => {
+    const { ctx, gtagJs } = await contexto(b, { chave: true, cookies: false, viewport: { width: 390, height: 844 } });
     for (const pg of [...PAGINAS, ...LEGAIS, 'proposta.html?previa=1']) {
       const p = await ctx.newPage(); const antes = gtagJs.length;
       await p.goto(BASE + '/' + pg); await p.waitForTimeout(100);
@@ -506,41 +507,83 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
       assert.ok(await p.evaluate(() => window.dataLayer.some(a => a[0] === 'config' && a[1] === 'AW-18479570694')), pg);
       assert.strictEqual(await p.locator('#cookie-faixa, #cookie-preferencias').count(), 0, pg);
       assert.strictEqual(await p.evaluate(() => window.localStorage.getItem('antere_cookies')), null, pg);
+      assert.strictEqual(await p.evaluate(() => window.dataLayer.filter(a => a[0] === 'consent' || (a[0] === 'set' && a[1] === 'ads_data_redaction')).length), 0, 'consentimento enviado com o aviso desligado: ' + pg);
       assert.strictEqual(await p.evaluate(() => document.body.classList.contains('cookies-aberto')), false, pg);
       if (await p.locator('#wa-float').count()) assert.strictEqual(await p.evaluate(() => getComputedStyle(document.getElementById('wa-float')).bottom), '16px', pg);
       await p.close();
     }
     await ctx.close();
   });
-  await t('cookies ligado (simulado): faixa com Aceitar/Recusar e link da política; sem aceite a tag não carrega; Recusar fica guardado', async () => {
+  const consent = (p) => p.evaluate(() => window.dataLayer.filter(a => a[0] === 'consent').map(a => [a[1], a[2]]));
+  const NEG = { ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' }, LIB = { ad_storage: 'granted', ad_user_data: 'granted', ad_personalization: 'granted' };
+  await t('cookies ligado (Consent Mode v2, simulado): a tag carrega com os 3 consentimentos negados antes do config; faixa e link da política; Recusar mantém negado', async () => {
     const { ctx, gtagJs } = await contexto(b, { cookies: true, viewport: { width: 390, height: 844 } });
     const p = await ctx.newPage(); await p.goto(BASE + '/'); await p.waitForTimeout(100);
     assert.ok(await p.isVisible('#cookie-faixa'));
     assert.strictEqual(await p.getAttribute('#cookie-faixa a', 'href'), 'https://legal.antere.com.br/privacidade.html');
     assert.strictEqual(await p.textContent('#cookie-aceitar'), 'Aceitar'); assert.strictEqual(await p.textContent('#cookie-recusar'), 'Recusar');
-    assert.strictEqual(gtagJs.length, 0, 'a tag carregou antes do aceite');
+    assert.strictEqual(gtagJs.length, 1, 'a tag carrega mesmo sem escolha');
+    const ordem = await p.evaluate(() => window.dataLayer.map(a => a[0] + (a[0] === 'consent' ? ':' + a[1] : '')));
+    assert.ok(ordem.indexOf('consent:default') >= 0 && ordem.indexOf('consent:default') < ordem.indexOf('config'), ordem.join(','));
+    assert.deepStrictEqual(await consent(p), [['default', NEG]]);
+    assert.ok(await p.evaluate(() => window.dataLayer.some(a => a[0] === 'set' && a[1] === 'ads_data_redaction' && a[2] === true)));
     const fb = await p.evaluate(() => document.getElementById('wa-float').getBoundingClientRect().bottom), cf = await p.evaluate(() => document.getElementById('cookie-faixa').getBoundingClientRect().top);
     assert.ok(fb <= cf, 'WhatsApp por baixo da faixa');
     await p.click('#cookie-recusar');
     assert.ok(await p.isHidden('#cookie-faixa')); assert.strictEqual(JSON.parse(await p.evaluate(() => localStorage.getItem('antere_cookies'))).escolha, 'recusado');
-    for (const pg of ['sobre.html', 'proposta.html?previa=1', 'legal/termos.html']) { await p.goto(BASE + '/' + pg); await p.waitForTimeout(100); assert.strictEqual(await p.locator('#cookie-faixa').count(), 0, pg); }
-    assert.strictEqual(gtagJs.length, 0, 'a tag carregou depois do Recusar');
+    assert.deepStrictEqual(await consent(p), [['default', NEG], ['update', NEG]]);
+    for (const pg of ['sobre.html', 'proposta.html?previa=1', 'legal/termos.html']) { await p.goto(BASE + '/' + pg); await p.waitForTimeout(100); assert.strictEqual(await p.locator('#cookie-faixa').count(), 0, pg); assert.deepStrictEqual(await consent(p), [['default', NEG]], pg); }
     await ctx.close();
   });
-  await t('cookies ligado (simulado): Aceitar carrega a tag na hora e nas próximas páginas; "Preferências de cookies" reabre a faixa', async () => {
+  await t('cookies ligado (Consent Mode v2, simulado): Aceitar libera os 3 consentimentos na hora e nas próximas páginas; "Preferências de cookies" permite voltar atrás', async () => {
     const { ctx, gtagJs } = await contexto(b, { cookies: true });
     const p = await ctx.newPage(); await p.goto(BASE + '/calculadora.html'); await p.waitForTimeout(100);
-    assert.strictEqual(gtagJs.length, 0); await p.click('#cookie-aceitar'); await p.waitForTimeout(100);
-    assert.strictEqual(gtagJs.length, 1); assert.ok(await p.isHidden('#cookie-faixa'));
+    await p.click('#cookie-aceitar');
+    assert.deepStrictEqual(await consent(p), [['default', NEG], ['update', LIB]]); assert.ok(await p.isHidden('#cookie-faixa'));
+    assert.ok(await p.evaluate(() => window.dataLayer.some(a => a[0] === 'set' && a[1] === 'ads_data_redaction' && a[2] === false)));
     await p.goto(BASE + '/contato.html'); await p.waitForTimeout(100);
-    assert.strictEqual(gtagJs.length, 2); assert.strictEqual(await p.locator('#cookie-faixa').count(), 0);
+    assert.deepStrictEqual(await consent(p), [['default', LIB]]); assert.strictEqual(await p.locator('#cookie-faixa').count(), 0);
     await p.click('#cookie-preferencias'); assert.ok(await p.isVisible('#cookie-faixa'));
-    await p.click('#cookie-recusar'); assert.strictEqual(JSON.parse(await p.evaluate(() => localStorage.getItem('antere_cookies'))).escolha, 'recusado');
-    await p.goto(BASE + '/index.html'); await p.waitForTimeout(100); assert.strictEqual(gtagJs.length, 2, 'depois de recusar, a tag não carrega mais');
+    await p.click('#cookie-recusar'); assert.deepStrictEqual(await consent(p), [['default', LIB], ['update', NEG]]);
+    await p.goto(BASE + '/index.html'); await p.waitForTimeout(100); assert.deepStrictEqual(await consent(p), [['default', NEG]]);
+    assert.strictEqual(gtagJs.length, 3, 'a tag carrega em todas as páginas');
     await ctx.close();
   });
 
   // ---------------- nome ----------------
+  await t('cookies ligado (o site-config.js publicado): faixa em todas as páginas e nas legais, com a política; depois do Recusar não pergunta de novo; WhatsApp e formulário (etapas 1 e 2, conversão) funcionam', async () => {
+    const { ctx, reqs, gtagJs } = await contexto(b, { webhooks: etapa1Ok(EMP), viewport: { width: 390, height: 844 } });
+    for (const pg of [...PAGINAS, ...LEGAIS, 'proposta.html']) {
+      const p = await ctx.newPage(); await p.goto(BASE + '/' + pg); await p.waitForTimeout(100);
+      assert.strictEqual(await p.evaluate(() => window.ANTERE_COOKIES), true, pg);
+      assert.ok(await p.isVisible('#cookie-faixa'), pg); assert.strictEqual(await p.getAttribute('#cookie-faixa a', 'href'), 'https://legal.antere.com.br/privacidade.html', pg);
+      assert.deepStrictEqual(await consent(p), [['default', NEG]], pg);
+      if (await p.locator('#wa-float').count()) { const fb = await p.evaluate(() => document.getElementById('wa-float').getBoundingClientRect().bottom), cf = await p.evaluate(() => document.getElementById('cookie-faixa').getBoundingClientRect().top); assert.ok(fb <= cf, 'WhatsApp por baixo da faixa: ' + pg); }
+      await p.close();
+    }
+    assert.strictEqual(gtagJs.length, PAGINAS.length + LEGAIS.length + 1, 'a tag carrega em toda página, com os anúncios negados');
+    const p = await ctx.newPage(); await p.goto(BASE + '/' + UTM); await p.waitForTimeout(100);
+    await p.click('#cookie-recusar'); assert.ok(await p.isHidden('#cookie-faixa'));
+    assert.strictEqual(JSON.parse(await p.evaluate(() => localStorage.getItem('antere_cookies'))).escolha, 'recusado');
+    assert.deepStrictEqual(await consent(p), [['default', NEG], ['update', NEG]]);
+    // WhatsApp com "Recusar": link, mensagem com a origem e o evento whatsapp_click
+    await semNavegar(p); const f = p.locator('#wa-float');
+    const u = new URL(await f.getAttribute('href')); assert.strictEqual(u.origin + u.pathname, 'https://wa.me/5511955032670');
+    assert.strictEqual(u.searchParams.get('text'), 'Olá! Vim pelo site da Antere e quero saber mais sobre as soluções.\n\nOrigem: google / cpc / pagamento_integrado');
+    await f.click(); const ev = await eventos(p, 'whatsapp_click'); assert.strictEqual(ev.length, 1); assert.strictEqual(ev[0].local, 'flutuante');
+    for (const pg of ['sobre.html', 'legal/termos.html']) { await p.goto(BASE + '/' + pg); await p.waitForTimeout(100); assert.strictEqual(await p.locator('#cookie-faixa').count(), 0, 'perguntou de novo: ' + pg); assert.deepStrictEqual(await consent(p), [['default', NEG]], pg); }
+    // formulário com "Recusar" (chave do formulário publicada, sem ?previa=1): etapa 1, conversão, etapa 2, tela final
+    await p.goto(BASE + '/proposta.html?ref=site_institucional'); await p.waitForTimeout(100);
+    assert.strictEqual(await p.locator('#cookie-faixa').count(), 0); assert.deepStrictEqual(await consent(p), [['default', NEG]]);
+    await preencheE1(p, ['tef']); await p.click('#b1'); await p.waitForSelector('#pf-e2:not([hidden])');
+    assert.deepStrictEqual(reqs[0].corpo.produtos, ['tef']); assert.strictEqual(reqs[0].corpo.utm_campaign, 'pagamento_integrado');
+    const conv = await eventos(p, 'conversion'); assert.strictEqual(conv.length, 1); assert.strictEqual(conv[0].send_to, SEND_TO);
+    await p.fill('#f-sistema', 'Linx'); await p.fill('#f-lojas', '1'); await p.click('#b2'); await p.waitForSelector('#pf-fim:not([hidden])');
+    assert.strictEqual(reqs.length, 2); assert.strictEqual(reqs[1].corpo.sistema_pdv, 'Linx');
+    assert.strictEqual(await p.textContent('#pf-fim h1'), 'Sua proposta foi enviada.');
+    assert.strictEqual(new URL(await p.getAttribute('#pf-fim a[data-wa]', 'href')).origin, 'https://wa.me');
+    await ctx.close();
+  });
   await t('Sobre: "Quem acompanha você" / Equipe comercial Antere; nenhum "Fernanda" em public/ nem no gerador', async () => {
     const h = fs.readFileSync(path.join(PUB, 'sobre.html'), 'utf8');
     assert.ok(h.includes('<span class="eyebrow">Quem acompanha você</span><h3>Equipe comercial Antere</h3><p>Assina as propostas e acompanha cada cliente, da proposta até a ativação.</p>'));

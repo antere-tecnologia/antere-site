@@ -30,9 +30,10 @@ window.ANTERE_FORM_NOVO = true;  /* religada em 17/10/2026, depois do teste fina
 
 /* Chave do aviso de cookies (LGPD), README, seção "Aviso de cookies".
    false: a tag do Google Ads carrega em toda visita, como antes, e não aparece aviso.
-   true:  aparece a faixa "Aceitar" / "Recusar"; a tag só carrega depois do "Aceitar" e a escolha fica guardada no navegador.
-   Só ligar depois da validação da conversão do Google Ads. */
-window.ANTERE_COOKIES = false;
+   true:  aparece a faixa "Aceitar" / "Recusar" (Consent Mode v2): a tag carrega com os cookies de anúncios negados e o "Aceitar" os
+          libera; a escolha fica guardada no navegador.
+   Voltar para false desliga a faixa e o Consent Mode (a tag segue carregando, como antes). */
+window.ANTERE_COOKIES = true;  /* ligada em 17/10/2026, com o Consent Mode v2 (anúncios negados até o "Aceitar") */
 """
 
 SWITCH_SCRIPT = r"""
@@ -96,18 +97,23 @@ window.addEventListener('scroll',agenda,{passive:true});window.addEventListener(
 </script>
 """.replace('__NUM__', WHATSAPP_NUMERO).replace('__MSG__', WHATSAPP_MSG)
 
-# <head>: site-config.js e a tag do Google Ads. A tag carrega na hora com ANTERE_COOKIES desligada (como antes de 15/10) e, com
-# ela ligada, só depois do "Aceitar" (escolha em localStorage "antere_cookies"). As legais usam o endereço absoluto do site-config.js,
+# <head>: site-config.js e a tag do Google Ads. A tag carrega em toda visita; com ANTERE_COOKIES ligada (17/10/2026), vai com o
+# Consent Mode v2 (ver abaixo; escolha em localStorage "antere_cookies"). As legais usam o endereço absoluto do site-config.js,
 # porque também são servidas em legal.antere.com.br.
 ADS_ID = "AW-18479570694"
 def gtag_head(config_src="/site-config.js"):
+    # Consent Mode v2 (proposta de 16/10/2026): com ANTERE_COOKIES ligada, a tag carrega sempre, com ad_storage, ad_user_data e
+    # ad_personalization negados por padrão (ou concedidos, para quem já aceitou); o "Aceitar" libera com antereConsentimento(true).
+    # Com a chave desligada, nenhum comando de consentimento é enviado e tudo fica como antes.
     return """<script src="%s"></script>
-<!-- Google Ads (09/10/2026): tag global gtag.js, ID %s. 15/10/2026: carregada por script, para obedecer ao aviso de cookies quando ligado -->
-<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','%s');
-(function(){var feito=false;window.antereCarregarAds=function(){if(feito)return;feito=true;var t=document.createElement('script');t.async=true;t.src='https://www.googletagmanager.com/gtag/js?id=%s';document.head.appendChild(t)};
-if(window.ANTERE_COOKIES!==true){window.antereCarregarAds();return}
-var c=null;try{c=JSON.parse(window.localStorage.getItem('antere_cookies')||'null')}catch(e){c=null}
-if(c&&c.escolha==='aceito')window.antereCarregarAds()})();</script>
+<!-- Google Ads (09/10/2026): tag global gtag.js, ID %s. Consent Mode v2 quando o aviso de cookies está ligado -->
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
+window.antereConsentimento=function(sim){var v=sim?'granted':'denied';gtag('consent','update',{ad_storage:v,ad_user_data:v,ad_personalization:v});gtag('set','ads_data_redaction',!sim)};
+(function(){if(window.ANTERE_COOKIES!==true)return;var c=null;try{c=JSON.parse(window.localStorage.getItem('antere_cookies')||'null')}catch(e){c=null}
+var sim=!!(c&&c.escolha==='aceito'),v=sim?'granted':'denied';
+gtag('consent','default',{ad_storage:v,ad_user_data:v,ad_personalization:v});gtag('set','ads_data_redaction',!sim)})();
+gtag('js',new Date());gtag('config','%s');
+(function(){var t=document.createElement('script');t.async=true;t.src='https://www.googletagmanager.com/gtag/js?id=%s';document.head.appendChild(t)})();</script>
 """ % (config_src, ADS_ID, ADS_ID, ADS_ID)
 GTAG_HEAD = gtag_head()
 GTAG_HEAD_LEGAL = gtag_head("https://www.antere.com.br/site-config.js")
@@ -127,7 +133,8 @@ body.cookies-aberto{padding-bottom:calc(var(--faixa-cookies,0px) + 16px)}
 </style>
 <script>
 /* Aviso de cookies (15/10/2026), atrás da chave ANTERE_COOKIES (site-config.js). Desligada: não faz nada.
-   Ligada: sem escolha guardada, mostra a faixa; "Aceitar" carrega a tag do Google Ads (antereCarregarAds, no <head>) e "Recusar" não;
+   Ligada (Consent Mode v2, proposta de 16/10/2026): sem escolha guardada, mostra a faixa; "Aceitar" libera ad_storage, ad_user_data e
+   ad_personalization (antereConsentimento, no <head>) e "Recusar" os mantém negados; a tag carrega nos dois casos;
    a escolha fica em localStorage "antere_cookies". O link "Preferências de cookies" no rodapé reabre a faixa. */
 (function(){if(window.ANTERE_COOKIES!==true)return;var K='antere_cookies',f=null;
 function le(){try{return JSON.parse(window.localStorage.getItem(K)||'null')}catch(e){return null}}
@@ -135,10 +142,10 @@ function grava(v){try{window.localStorage.setItem(K,JSON.stringify({escolha:v,em
 function altura(){document.documentElement.style.setProperty('--faixa-cookies',(f&&!f.hidden?f.offsetHeight:0)+'px')}
 function fecha(){if(f)f.hidden=true;document.body.classList.remove('cookies-aberto');altura()}
 function abre(){if(!f){f=document.createElement('div');f.className='cookie-faixa';f.id='cookie-faixa';f.setAttribute('role','region');f.setAttribute('aria-label','Aviso de cookies');
- f.innerHTML='<div class="cf-in"><p>Usamos cookies e a tag do Google Ads só para medir o resultado dos nossos anúncios. Você escolhe se aceita. Saiba mais na <a href="https://legal.antere.com.br/privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</p><div class="cf-bt"><button type="button" id="cookie-recusar">Recusar</button><button type="button" id="cookie-aceitar">Aceitar</button></div></div>';
+ f.innerHTML='<div class="cf-in"><p>Usamos cookies do Google Ads para medir o resultado dos nossos anúncios. Sem o seu aceite, nenhum cookie de anúncio é gravado e o Google recebe só sinais sem identificação. Saiba mais na <a href="https://legal.antere.com.br/privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</p><div class="cf-bt"><button type="button" id="cookie-recusar">Recusar</button><button type="button" id="cookie-aceitar">Aceitar</button></div></div>';
  document.body.appendChild(f);
- f.querySelector('#cookie-aceitar').addEventListener('click',function(){grava('aceito');fecha();if(window.antereCarregarAds)window.antereCarregarAds()});
- f.querySelector('#cookie-recusar').addEventListener('click',function(){grava('recusado');fecha()});
+ f.querySelector('#cookie-aceitar').addEventListener('click',function(){grava('aceito');fecha();if(window.antereConsentimento)window.antereConsentimento(true)});
+ f.querySelector('#cookie-recusar').addEventListener('click',function(){grava('recusado');fecha();if(window.antereConsentimento)window.antereConsentimento(false)});
  window.addEventListener('resize',altura)}
  f.hidden=false;document.body.classList.add('cookies-aberto');altura()}
 var cols=document.querySelector('footer .cols');if(cols){var a=document.createElement('a');a.href='#';a.id='cookie-preferencias';a.textContent='Preferências de cookies';a.addEventListener('click',function(e){e.preventDefault();abre()});cols.appendChild(a)}

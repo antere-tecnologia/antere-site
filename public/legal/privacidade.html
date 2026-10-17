@@ -3,12 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <script src="https://www.antere.com.br/site-config.js"></script>
-<!-- Google Ads (09/10/2026): tag global gtag.js, ID AW-18479570694. 15/10/2026: carregada por script, para obedecer ao aviso de cookies quando ligado -->
-<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','AW-18479570694');
-(function(){var feito=false;window.antereCarregarAds=function(){if(feito)return;feito=true;var t=document.createElement('script');t.async=true;t.src='https://www.googletagmanager.com/gtag/js?id=AW-18479570694';document.head.appendChild(t)};
-if(window.ANTERE_COOKIES!==true){window.antereCarregarAds();return}
-var c=null;try{c=JSON.parse(window.localStorage.getItem('antere_cookies')||'null')}catch(e){c=null}
-if(c&&c.escolha==='aceito')window.antereCarregarAds()})();</script>
+<!-- Google Ads (09/10/2026): tag global gtag.js, ID AW-18479570694. Consent Mode v2 quando o aviso de cookies está ligado -->
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
+window.antereConsentimento=function(sim){var v=sim?'granted':'denied';gtag('consent','update',{ad_storage:v,ad_user_data:v,ad_personalization:v});gtag('set','ads_data_redaction',!sim)};
+(function(){if(window.ANTERE_COOKIES!==true)return;var c=null;try{c=JSON.parse(window.localStorage.getItem('antere_cookies')||'null')}catch(e){c=null}
+var sim=!!(c&&c.escolha==='aceito'),v=sim?'granted':'denied';
+gtag('consent','default',{ad_storage:v,ad_user_data:v,ad_personalization:v});gtag('set','ads_data_redaction',!sim)})();
+gtag('js',new Date());gtag('config','AW-18479570694');
+(function(){var t=document.createElement('script');t.async=true;t.src='https://www.googletagmanager.com/gtag/js?id=AW-18479570694';document.head.appendChild(t)})();</script>
 <title>Política de Privacidade — Antere</title>
 <style>
   body { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 20px; color: #1B1E27; line-height: 1.6; }
@@ -25,7 +27,7 @@ if(c&&c.escolha==='aceito')window.antereCarregarAds()})();</script>
 <body>
 
 <h1>Política de Privacidade</h1>
-<div class="updated">Última atualização: 9 de outubro de 2026 — Antere (F. de Carvalho Spahn Consultoria em Tecnologia da Informação LTDA)</div>
+<div class="updated">Última atualização: 17 de outubro de 2026 — Antere (F. de Carvalho Spahn Consultoria em Tecnologia da Informação LTDA)</div>
 
 <p>Esta Política de Privacidade descreve como a Antere coleta, usa, armazena e protege dados pessoais de quem interage com nossos canais de atendimento comercial — WhatsApp, e-mail e formulários em nossos sites e nos sites de produtos parceiros que atendemos (como o PDVet).</p>
 
@@ -65,7 +67,7 @@ if(c&&c.escolha==='aceito')window.antereCarregarAds()})();</script>
 <li><strong>RD Station</strong> — plataforma de CRM onde seu contato e histórico comercial são registrados.</li>
 <li><strong>Google (Google Sheets)</strong> — armazenamento operacional de leads.</li>
 <li><strong>Meta (WhatsApp Business Platform)</strong> — infraestrutura de envio e recebimento de mensagens.</li>
-<li><strong>Google (Google Ads)</strong> — nosso site (www.antere.com.br) usa cookies e tags do Google Ads para medir o desempenho dos nossos anúncios, como visitas vindas de anúncios e cliques para solicitar proposta. Você pode bloquear esses cookies nas configurações do seu navegador e gerenciar anúncios personalizados em <a href="https://adssettings.google.com" target="_blank" rel="noopener">adssettings.google.com</a>.</li>
+<li><strong>Google (Google Ads)</strong> — nosso site (www.antere.com.br) usa a tag do Google Ads para medir o desempenho dos nossos anúncios, como visitas vindas de anúncios e pedidos de proposta. Os cookies de anúncios só são gravados se você aceitar no aviso de cookies; sem o aceite, a tag envia ao Google apenas sinais sem cookies e sem identificador de anúncio, usados para estimar resultados de forma agregada. Você pode mudar sua escolha a qualquer momento em "Preferências de cookies", no rodapé do site. Os dados guardados no seu navegador que são necessários para o site funcionar (a sua escolha sobre cookies e a origem da visita usada no pedido de proposta) não dependem do aceite. Você também pode bloquear cookies nas configurações do seu navegador e gerenciar anúncios personalizados em <a href="https://adssettings.google.com" target="_blank" rel="noopener">adssettings.google.com</a>.</li>
 <li><strong>Google (Gemini)</strong> — processamento de linguagem natural para o atendimento automatizado por IA.</li>
 <li><strong>Resend</strong> — envio de e-mails transacionais.</li>
 <li><strong>Provedor de hospedagem (Cloudfy)</strong> — infraestrutura onde nossos sistemas de automação rodam.</li>
@@ -145,7 +147,8 @@ body.cookies-aberto{padding-bottom:calc(var(--faixa-cookies,0px) + 16px)}
 </style>
 <script>
 /* Aviso de cookies (15/10/2026), atrás da chave ANTERE_COOKIES (site-config.js). Desligada: não faz nada.
-   Ligada: sem escolha guardada, mostra a faixa; "Aceitar" carrega a tag do Google Ads (antereCarregarAds, no <head>) e "Recusar" não;
+   Ligada (Consent Mode v2, proposta de 16/10/2026): sem escolha guardada, mostra a faixa; "Aceitar" libera ad_storage, ad_user_data e
+   ad_personalization (antereConsentimento, no <head>) e "Recusar" os mantém negados; a tag carrega nos dois casos;
    a escolha fica em localStorage "antere_cookies". O link "Preferências de cookies" no rodapé reabre a faixa. */
 (function(){if(window.ANTERE_COOKIES!==true)return;var K='antere_cookies',f=null;
 function le(){try{return JSON.parse(window.localStorage.getItem(K)||'null')}catch(e){return null}}
@@ -153,10 +156,10 @@ function grava(v){try{window.localStorage.setItem(K,JSON.stringify({escolha:v,em
 function altura(){document.documentElement.style.setProperty('--faixa-cookies',(f&&!f.hidden?f.offsetHeight:0)+'px')}
 function fecha(){if(f)f.hidden=true;document.body.classList.remove('cookies-aberto');altura()}
 function abre(){if(!f){f=document.createElement('div');f.className='cookie-faixa';f.id='cookie-faixa';f.setAttribute('role','region');f.setAttribute('aria-label','Aviso de cookies');
- f.innerHTML='<div class="cf-in"><p>Usamos cookies e a tag do Google Ads só para medir o resultado dos nossos anúncios. Você escolhe se aceita. Saiba mais na <a href="https://legal.antere.com.br/privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</p><div class="cf-bt"><button type="button" id="cookie-recusar">Recusar</button><button type="button" id="cookie-aceitar">Aceitar</button></div></div>';
+ f.innerHTML='<div class="cf-in"><p>Usamos cookies do Google Ads para medir o resultado dos nossos anúncios. Sem o seu aceite, nenhum cookie de anúncio é gravado e o Google recebe só sinais sem identificação. Saiba mais na <a href="https://legal.antere.com.br/privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</p><div class="cf-bt"><button type="button" id="cookie-recusar">Recusar</button><button type="button" id="cookie-aceitar">Aceitar</button></div></div>';
  document.body.appendChild(f);
- f.querySelector('#cookie-aceitar').addEventListener('click',function(){grava('aceito');fecha();if(window.antereCarregarAds)window.antereCarregarAds()});
- f.querySelector('#cookie-recusar').addEventListener('click',function(){grava('recusado');fecha()});
+ f.querySelector('#cookie-aceitar').addEventListener('click',function(){grava('aceito');fecha();if(window.antereConsentimento)window.antereConsentimento(true)});
+ f.querySelector('#cookie-recusar').addEventListener('click',function(){grava('recusado');fecha();if(window.antereConsentimento)window.antereConsentimento(false)});
  window.addEventListener('resize',altura)}
  f.hidden=false;document.body.classList.add('cookies-aberto');altura()}
 var cols=document.querySelector('footer .cols');if(cols){var a=document.createElement('a');a.href='#';a.id='cookie-preferencias';a.textContent='Preferências de cookies';a.addEventListener('click',function(e){e.preventDefault();abre()});cols.appendChild(a)}
