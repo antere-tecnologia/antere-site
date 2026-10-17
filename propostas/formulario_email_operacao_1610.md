@@ -166,3 +166,24 @@ Depois de ir para a `main`, avisar a Operação para tirar o `procura` do contra
   Correção sugerida: escolher a linha cujo `pedido_token` bate com o enviado (ou a mais recente), e conferir se o `lead_id` pode se repetir.
 - Outras causas que dão o mesmo 404: a linha da etapa 1 não ter sido gravada (ou gravada sem `pedido_token`), ou `procura` gravado fora de
   `c6pay`/`proposta`. A execução da etapa 2 do teste do Rodrigo mostra qual foi.
+
+**17/10/2026, 18h10:** a Operação corrigiu o "pedido não encontrado" (`antere-automacao` 0b13f74: a etapa 2 usa a linha do `lead_id` e do
+token; lead repetido dava 404), como na hipótese acima.
+
+## 18/10/2026: C6 Pay só com TEF; caixas, sistema PDV e lojas só com TEF (pedido do Rodrigo) — pedido à Operação
+
+**Estado:** pronto no site, no branch `claude/kind-galileo-2wjuc2`, **fora da `main`**. Só vai para a `main` quando a Operação confirmar que
+o n8n aceita o envio abaixo (hoje, `validarEtapa1` exige `caixas` e `validarEtapa2` exige `sistema_pdv` e `lojas` para qualquer produto).
+
+- **Tela:** marcar C6 Pay marca também o TEF e mostra "O C6 Pay é oferecido junto com o TEF integrado ao caixa."; desmarcar o TEF desmarca o
+  C6 Pay. Ou seja, o site nunca manda `c6pay` sem `tef`.
+- **Etapa 1:** `caixas` só vai (e só é obrigatório) quando `produtos` tem `tef`. Sem TEF, o campo não vai.
+- **Etapa 2:** `sistema_pdv` e `lojas` só vão (e só são obrigatórios) quando o pedido tem `tef`. Sem TEF (por exemplo, só link, ou link +
+  PDVet), a etapa 2 manda `lead_id`, `pedido_token`, `razao_social`, `website` e `faixa_link`.
+- **Pedido à Operação:**
+  1. `validarEtapa1`: exigir `caixas` só com `tef`;
+  2. `validarEtapa2`: exigir `sistema_pdv` e `lojas` só quando o pedido da etapa 1 tem `tef`;
+  3. se quiser, recusar `c6pay` sem `tef` (`422` `produtos` `invalido`), já que o site não manda mais essa combinação;
+  4. `pedidoGeracao`: o que vai em "Sistema PDV", "Quantidade de lojas" e "Quantidade de PDVs" quando não houver TEF;
+  5. atualizar o contrato, publicar e avisar a sessão Site. Os testes do site (`testes/site.test.js`) passam a conferir esses corpos com a
+     `lib/` assim que ela aceitar a etapa 1 sem `caixas`.

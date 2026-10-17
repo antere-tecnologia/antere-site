@@ -27,6 +27,9 @@ try { lib = require(path.join(__dirname, '..', '..', 'antere-automacao', 'n8n', 
 // 17/10: os produtos passaram para a etapa 1 (contrato publicado pela Operação às 10h50). Só confere os corpos com a lib que já tiver o
 // contrato novo (aceita a etapa 1 com produtos); com a lib antiga, essa conferência fica de fora.
 const libNova = !!(lib && lib.validarEtapa1({ nome: 'Ana Lima', whatsapp: '11987654321', email: 'a@b.com.br', cnpj: '11222333000181', caixas: 1, produtos: ['c6pay'], consentimento_lgpd: true }).ok);
+// 18/10: sem TEF, o site não manda caixas (etapa 1) nem sistema_pdv/lojas (etapa 2). Só confere esses corpos com a lib que já aceitar isso.
+const libSemTef = !!(libNova && lib.validarEtapa1({ nome: 'Ana Lima', whatsapp: '11987654321', email: 'a@b.com.br', cnpj: '11222333000181', produtos: ['link'], consentimento_lgpd: true }).ok);
+const confereLib = (corpo, produtos) => libNova && ((produtos || corpo.produtos || []).includes('tef') || libSemTef);
 
 let ok = 0, falhas = 0;
 async function t(nome, f) {
@@ -135,8 +138,9 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
   // produtos: lista de tef, c6pay, link e pdvet ('c6pay' sozinho = ['c6pay'])
   async function preencheE1(p, produtos) {
     await p.fill('#f-nome', 'Maria da Silva'); await p.type('#f-whatsapp', '11987654321'); await p.fill('#f-email', 'maria@empresa.com.br');
-    await p.type('#f-cnpj', CNPJ.replace(/\D/g, '')); await p.fill('#f-caixas', '3');
+    await p.type('#f-cnpj', CNPJ.replace(/\D/g, ''));
     for (const v of [].concat(produtos)) await p.check('input[name=produtos][value=' + v + ']');
+    if (await p.isVisible('#f-caixas')) await p.fill('#f-caixas', '3');
     await p.check('#f-lgpd');
   }
   const EMP = { cnpj_confirmado: true, razao_social: 'EMPRESA EXEMPLO LTDA', cidade: 'São Paulo', uf: 'SP' };
@@ -145,7 +149,7 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP) }); const p = await ctx.newPage();
     await p.goto(BASE + '/proposta.html?previa=1');
     await p.click('#b1');
-    for (const c of ['nome', 'whatsapp', 'email', 'cnpj', 'caixas', 'produtos', 'consentimento_lgpd']) assert.ok((await p.textContent('#e-' + c)).length > 0, c);
+    for (const c of ['nome', 'whatsapp', 'email', 'cnpj', 'produtos', 'consentimento_lgpd']) assert.ok((await p.textContent('#e-' + c)).length > 0, c);
     await preencheE1(p, 'c6pay'); await p.fill('#f-cnpj', ''); await p.type('#f-cnpj', '11222333000182'); await p.click('#b1');
     assert.match(await p.textContent('#e-cnpj'), /não batem/);
     assert.strictEqual(await p.inputValue('#f-whatsapp'), '(11) 98765-4321');
@@ -170,7 +174,7 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     assert.deepStrictEqual([c1.nome, c1.whatsapp, c1.email, c1.cnpj, c1.caixas, c1.produtos, c1.consentimento_lgpd, c1.website], ['Maria da Silva', '(11) 98765-4321', 'maria@empresa.com.br', '11222333000181', 3, ['tef', 'c6pay', 'link', 'pdvet'], true, '']);
     assert.ok(!('procura' in c1), 'procura deixou de ser mandado (contrato de 17/10)');
     assert.deepStrictEqual([c1.utm_source, c1.utm_medium, c1.utm_campaign, c1.gclid, c1.ref], ['google', 'cpc', 'pagamento_integrado', 'XYZ', 'site_institucional']);
-    if (libNova) assert.ok(lib.validarEtapa1(c1).ok, JSON.stringify(lib.validarEtapa1(c1)));
+    if (confereLib(c1)) assert.ok(lib.validarEtapa1(c1).ok, JSON.stringify(lib.validarEtapa1(c1)));
     const conv = await eventos(p, 'conversion'); assert.strictEqual(conv.length, 1); assert.strictEqual(conv[0].send_to, SEND_TO);
     assert.strictEqual(await p.textContent('#pf-e2 .eyebrow'), 'Etapa 2 de 2');
     assert.strictEqual(await p.textContent('#v-razao'), 'EMPRESA EXEMPLO LTDA'); assert.strictEqual(await p.textContent('#v-cnpj'), CNPJ); assert.strictEqual(await p.textContent('#v-cidade'), 'São Paulo/SP');
@@ -213,43 +217,66 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, []); await p.click('#b1');
     assert.strictEqual(await p.textContent('#e-produtos'), 'Escolha pelo menos uma opção.'); assert.strictEqual(reqs.length, 0);
     await ctx.close();
+    // [marcados na tela, produtos enviados, grupos da etapa 2]; marcar C6 Pay marca também o TEF (18/10)
     const casos = [
-      [['pdvet'], 'pdvet', null],
-      [['link', 'pdvet'], 'c6pay', { tef: false, c6: false, link: true }],
-      [['c6pay'], 'c6pay', { tef: false, c6: true, link: false }],
-      [['tef'], 'c6pay', { tef: true, c6: false, link: false }],
-      [['tef', 'pdvet'], 'c6pay', { tef: true, c6: false, link: false }],
+      [['pdvet'], ['pdvet'], null],
+      [['link', 'pdvet'], ['link', 'pdvet'], { tef: false, c6: false, link: true }],
+      [['c6pay'], ['tef', 'c6pay'], { tef: true, c6: true, link: false }],
+      [['tef'], ['tef'], { tef: true, c6: false, link: false }],
+      [['tef', 'pdvet'], ['tef', 'pdvet'], { tef: true, c6: false, link: false }],
+      [['link'], ['link'], { tef: false, c6: false, link: true }],
     ];
-    for (const [prods, procura, grupos] of casos) {
+    for (const [marcados, prods, grupos] of casos) {
       const x = await contexto(b, { webhooks: etapa1Ok(EMP) }); const q = await x.ctx.newPage();
-      await q.goto(BASE + '/proposta.html?previa=1'); await preencheE1(q, prods); await q.click('#b1');
+      await q.goto(BASE + '/proposta.html?previa=1'); await preencheE1(q, marcados); await q.click('#b1');
       if (!grupos) { await q.waitForSelector('#pf-pdvet:not([hidden])'); assert.strictEqual(await q.getAttribute('#l-pdvet', 'href'), 'https://portal.pdvet.com.br/cadastro'); }
       else {
         await q.waitForSelector('#pf-e2:not([hidden])');
-        assert.deepStrictEqual({ tef: grupos.tef, c6: await q.isVisible('#c-c6'), link: await q.isVisible('#c-link') }, grupos, prods.join('+'));
-        assert.ok(await q.isVisible('#f-sistema') && await q.isVisible('#f-lojas'), 'sistema PDV e lojas sempre (contrato publicado)');
-        await q.fill('#f-sistema', 'Linx'); await q.fill('#f-lojas', '1');
+        assert.deepStrictEqual({ tef: await q.isVisible('#c-tef'), c6: await q.isVisible('#c-c6'), link: await q.isVisible('#c-link') }, grupos, prods.join('+'));
+        if (grupos.tef) { await q.fill('#f-sistema', 'Linx'); await q.fill('#f-lojas', '1'); }
         if (grupos.c6) { await q.check('input[name=vendas_cartao][value=ate_8mil]'); await q.check('input[name=recebimento][value=d31]'); }
         if (grupos.link) await q.selectOption('#f-faixa', 'ate_200');
         await q.click('#b2'); await q.waitForSelector('#pf-fim:not([hidden])');
         const c2 = x.reqs[1].corpo, campos = Object.keys(c2).sort();
-        const esperados = ['lead_id', 'lojas', 'pedido_token', 'razao_social', 'sistema_pdv', 'website'].concat(grupos.c6 ? ['recebimento', 'vendas_cartao'] : [], grupos.link ? ['faixa_link'] : []).sort();
+        const esperados = ['lead_id', 'pedido_token', 'razao_social', 'website'].concat(grupos.tef ? ['lojas', 'sistema_pdv'] : [], grupos.c6 ? ['recebimento', 'vendas_cartao'] : [], grupos.link ? ['faixa_link'] : []).sort();
         assert.deepStrictEqual(campos, esperados, prods.join('+'));
-        if (libNova) assert.ok(lib.validarEtapa2(c2, { lead_id: c2.lead_id, pedido_token: c2.pedido_token, procura: 'proposta', produtos: prods.join(',') }).ok, prods.join('+'));
+        if (confereLib(c2, prods)) assert.ok(lib.validarEtapa2(c2, { lead_id: c2.lead_id, pedido_token: c2.pedido_token, procura: 'proposta', produtos: prods.join(',') }).ok, prods.join('+'));
         await q.waitForTimeout(50); assert.strictEqual(await q.isVisible('#pdvet-adicional'), prods.includes('pdvet'), 'oferta do PDVet: ' + prods.join('+'));
       }
       assert.deepStrictEqual(x.reqs[0].corpo.produtos, prods); assert.ok(!('procura' in x.reqs[0].corpo));
-      if (libNova) assert.ok(lib.validarEtapa1(x.reqs[0].corpo).ok, prods.join('+'));
+      assert.strictEqual('caixas' in x.reqs[0].corpo, prods.includes('tef'), 'caixas só com TEF: ' + prods.join('+'));
+      if (confereLib(x.reqs[0].corpo)) assert.ok(lib.validarEtapa1(x.reqs[0].corpo).ok, prods.join('+'));
       assert.strictEqual((await eventos(q, 'conversion')).length, 1, 'conversão no envio da etapa 1: ' + prods.join('+'));
       await x.ctx.close();
     }
+  });
+
+  await t('formulário: C6 Pay só com TEF (marcar C6 Pay marca o TEF e mostra o aviso; desmarcar o TEF desmarca o C6 Pay); Nº de caixas só com TEF', async () => {
+    const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP) }); const p = await ctx.newPage();
+    await p.goto(BASE + '/proposta.html?previa=1');
+    const marcado = (v) => p.isChecked('input[name=produtos][value=' + v + ']');
+    assert.ok(await p.isHidden('#c-caixas') && await p.isHidden('#n-c6tef'));
+    await p.check('input[name=produtos][value=c6pay]');
+    assert.ok(await marcado('tef') && await marcado('c6pay'), 'marcar C6 Pay marca o TEF');
+    assert.ok(await p.isVisible('#n-c6tef')); assert.strictEqual(await p.textContent('#n-c6tef'), 'O C6 Pay é oferecido junto com o TEF integrado ao caixa.');
+    assert.ok(await p.isVisible('#c-caixas'), 'Nº de caixas aparece com TEF');
+    await p.uncheck('input[name=produtos][value=tef]');
+    assert.ok(!(await marcado('tef')) && !(await marcado('c6pay')), 'desmarcar o TEF desmarca o C6 Pay');
+    assert.ok(await p.isHidden('#n-c6tef') && await p.isHidden('#c-caixas'));
+    await p.check('input[name=produtos][value=tef]'); assert.ok(!(await marcado('c6pay')), 'TEF sozinho não marca o C6 Pay'); assert.ok(await p.isVisible('#c-caixas') && await p.isHidden('#n-c6tef'));
+    await p.fill('#f-nome', 'Maria da Silva'); await p.type('#f-whatsapp', '11987654321'); await p.fill('#f-email', 'maria@empresa.com.br'); await p.type('#f-cnpj', '11222333000181'); await p.check('#f-lgpd');
+    await p.click('#b1'); assert.strictEqual(await p.textContent('#e-caixas'), 'Informe o número de caixas.'); assert.strictEqual(reqs.length, 0, 'com TEF, caixas é obrigatório');
+    await p.uncheck('input[name=produtos][value=tef]'); await p.check('input[name=produtos][value=link]'); await p.click('#b1'); await p.waitForSelector('#pf-e2:not([hidden])');
+    assert.ok(!('caixas' in reqs[0].corpo), 'sem TEF, caixas não vai');
+    assert.ok(await p.isHidden('#c-tef') && await p.isHidden('#f-sistema') && await p.isHidden('#f-lojas'), 'sem TEF, sem sistema PDV e lojas');
+    await ctx.close();
   });
 
   await t('formulário: CNPJ não consultado pede a razão social digitada; "Corrigir" abre o campo', async () => {
     const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok({ cnpj_confirmado: false, razao_social: '', cidade: '', uf: '' }) }); const p = await ctx.newPage();
     await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, ['link']); await p.click('#b1'); await p.waitForSelector('#pf-e2:not([hidden])');
     assert.ok(await p.isHidden('#bloco-empresa')); assert.ok(await p.isVisible('#f-razao'));
-    await p.fill('#f-sistema', 'Nenhum'); await p.fill('#f-lojas', '1'); await p.selectOption('#f-faixa', 'acima_10000');
+    assert.ok(await p.isHidden('#c-tef')); await p.selectOption('#f-faixa', 'acima_10000');
     await p.click('#b2'); assert.strictEqual(await p.textContent('#e-razao_social'), 'Informe a razão social.'); assert.strictEqual(reqs.length, 1);
     await p.fill('#f-razao', 'Minha Empresa Ltda'); await p.click('#b2'); await p.waitForSelector('#pf-fim:not([hidden])');
     assert.strictEqual(reqs[1].corpo.razao_social, 'Minha Empresa Ltda'); assert.ok(!('conta_pj_c6' in reqs[1].corpo)); assert.ok(!('vendas_cartao' in reqs[1].corpo)); assert.ok(await p.isVisible('#t-escalonar'));
@@ -378,12 +405,12 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
       assert.strictEqual(await p.inputValue('#f-email'), 'contato@empresa.com.br'); assert.strictEqual(await p.inputValue('#f-nome'), 'Carla Souza');
       const u = new URL(p.url()); assert.ok(!u.searchParams.has('lead_id') && !u.searchParams.has('token'), p.url()); assert.strictEqual(u.searchParams.get('utm_source'), 'lote');
       assert.strictEqual(reqs[0].metodo, 'GET');
-      await p.type('#f-whatsapp', '11987654321'); await p.type('#f-cnpj', '11222333000181'); await p.fill('#f-caixas', '1'); await p.check('input[name=produtos][value=pdvet]'); await p.check('#f-lgpd');
+      await p.type('#f-whatsapp', '11987654321'); await p.type('#f-cnpj', '11222333000181'); await p.check('input[name=produtos][value=pdvet]'); await p.check('#f-lgpd');
       if (novo) await p.fill('#f-email', novo);
       await p.click('#b1'); await p.waitForSelector('#pf-pdvet:not([hidden])');
       const c = reqs[1].corpo;
       assert.deepStrictEqual([c.lead_id_cadastro, c.token_cadastro, c.email_alterado, c.email, c.utm_source], [LID, TK, alterado, novo || 'contato@empresa.com.br', 'lote']);
-      if (libNova) assert.ok(lib.validarEtapa1(c).ok);
+      if (confereLib(c)) assert.ok(lib.validarEtapa1(c).ok);
       await ctx.close();
     }
     const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP), dados }); const p = await ctx.newPage();

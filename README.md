@@ -43,6 +43,10 @@ Aprovado pelo Rodrigo para o formulário novo (proposta da Operação: `antere-a
 
 "O que você procura?" vira múltipla escolha com 4 opções (TEF, C6 Pay, link, PDVet; pelo menos uma). Só PDVet vai ao cadastro da PDVet; PDVet com outro produto segue para a etapa 2, que mostra só os campos dos produtos escolhidos (TEF: sistema PDV, lojas e caixas; C6 Pay: vendas no cartão e prazo de recebimento; link: volume de transações). Contrato publicado pela Operação em 17/10, 10h50; o site segue o contrato publicado (nº de caixas na etapa 1; sistema PDV e lojas na etapa 2 para todos os produtos; com PDVet junto, a tela final oferece o portal da PDVet). Telas aprovadas pelo Rodrigo e no ar desde 17/10/2026 (a chave do formulário está ligada).
 
+### Formulário: C6 Pay só com TEF (18/10/2026, em preparação)
+
+Marcar C6 Pay marca também o TEF ("O C6 Pay é oferecido junto com o TEF integrado ao caixa."); desmarcar o TEF desmarca o C6 Pay. "Nº de caixas" (etapa 1), "Sistema PDV" e "Nº de lojas" (etapa 2) só aparecem, só são obrigatórios e só são enviados com TEF. Pronto no branch `claude/kind-galileo-2wjuc2`; vai para a `main` depois de a Operação confirmar que o n8n aceita o envio sem esses campos (pedido em `propostas/formulario_email_operacao_1610.md`).
+
 ## WhatsApp (15/10/2026)
 
 Botão flutuante "Fale com a gente" no canto inferior direito de todas as páginas, inclusive as de `legal/`, menos no formulário. Leva ao número do atendimento com IA (`WHATSAPP_NUMERO` em `_src/componentes.py`, hoje 5511955032670) com a mensagem "Olá! Vim pelo site da Antere e quero saber mais sobre as soluções." e, quando a visita veio com UTM, a linha "Origem: fonte / meio / campanha". O botão some quando estaria por cima de um botão de proposta (celular). O clique em qualquer link do WhatsApp vira o evento `whatsapp_click` do Google Ads, sem conversão.
