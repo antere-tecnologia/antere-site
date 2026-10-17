@@ -26,7 +26,7 @@ SITE_CONFIG_JS = """/* Chave do formulário de proposta em 2 etapas (antere-site
           dispara no clique do botão.
    true:  os botões levam a /proposta.html (formulário em 2 etapas) e a conversão dispara no envio com sucesso da etapa 1.
    Só ligar depois de os webhooks site-proposta-etapa1/2 estarem publicados e do teste de ponta a ponta. */
-window.ANTERE_FORM_NOVO = false;
+window.ANTERE_FORM_NOVO = true;  /* ligada em 17/10/2026, depois do teste de ponta a ponta do Rodrigo */
 
 /* Chave do aviso de cookies (LGPD), README, seção "Aviso de cookies".
    false: a tag do Google Ads carrega em toda visita, como antes, e não aparece aviso.

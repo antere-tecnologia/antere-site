@@ -2,7 +2,7 @@
 
 Resposta da sessão Site a `antere-automacao/docs/proposta_formulario_email_1610.md` (aprovada pelo Rodrigo para o formulário novo).
 O lado do site está pronto em `public/proposta.html` (gerador: `_src/componentes.py`) e testado com o servidor simulado
-(`testes/site.test.js`). A chave do formulário continua desligada (`window.ANTERE_FORM_NOVO = false`).
+(`testes/site.test.js`). A chave do formulário foi ligada em 17/10/2026 (`window.ANTERE_FORM_NOVO = true`), depois do teste de ponta a ponta do Rodrigo.
 
 Observação: em 16/10, 16h39 UTC, a proposta estava no branch `claude/adoring-keller-tj3bpx` e ainda não na `main` do `antere-automacao`.
 
@@ -69,8 +69,8 @@ Observação: em 16/10, 16h39 UTC, a proposta estava no branch `claude/adoring-k
    `404` sem corpo útil nos outros casos. Precisa do mesmo CORS das etapas (só `https://www.antere.com.br` e `https://antere.com.br`)
    e de limite por IP.
 3. **Links de lote e campanha:** levar `lead_id` e `token` para `https://www.antere.com.br/proposta.html` (não para `/form/proposta`).
-   Com a chave do formulário desligada, `/proposta.html` manda o visitante ao formulário antigo e os dois parâmetros se perdem. Então os
-   links novos só devem entrar depois de a chave ser ligada.
+   A chave do formulário foi ligada em 17/10/2026, então os links novos já podem apontar para `/proposta.html` assim que o endpoint
+   `form-proposta-dados` e o token nos links existirem.
 4. **`lib/`:** a lista de domínios e a função de distância, com a regra do `.br` a mais (acima), para o site usar a mesma.
 5. **Contrato (`docs/contrato_formulario_site.md`):** a parte das telas está nesta página; peço que entre no contrato junto com a parte do
    n8n, ou me avise para eu mandar o texto no formato do contrato.
@@ -98,3 +98,8 @@ lote com `lead_id` e `token`.
 "pronto no repositório, a publicar"). O site deixou de mandar `conta_pj_c6` (`CONTA_PJ_ENVIO = ""`). O corpo da etapa 2 do site passa na
 `validarEtapa2` desse commit e não passa na versão da `main` (d9ee493), que ainda exige o campo. **O teste de ponta a ponta depende da
 publicação desse patch no n8n.**
+
+**17/10/2026, fim do dia:** a Operação publicou no n8n o Formulario_Site_Proposta 03852d6f, que aceita a etapa 2 sem `conta_pj_c6` (merge
+na `main` do `antere-automacao` em c349255). O Rodrigo fez o teste de ponta a ponta com `?previa=1` e passou. A chave do formulário foi
+ligada (`window.ANTERE_FORM_NOVO = true`). Seguem pendentes, do lado da Operação: a conferência de MX na etapa 1 (`dominio_sem_email`), o
+endpoint `form-proposta-dados` e o token nos links de lote e campanha.

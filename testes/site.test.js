@@ -67,18 +67,18 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
   const b = await chromium.launch();
 
   // ---------------- chave desligada (o estado publicado) ----------------
-  await t('site-config.js publicado com a chave desligada', async () => {
+  await t('site-config.js publicado com a chave do formulário ligada (17/10/2026)', async () => {
     const s = fs.readFileSync(path.join(PUB, 'site-config.js'), 'utf8');
-    assert.match(s, /^window\.ANTERE_FORM_NOVO = false;$/m);
+    assert.match(s, /^window\.ANTERE_FORM_NOVO = true;/m);
   });
-  await t('nenhum HTML de public/ tem link para o formulário novo', async () => {
+  await t('o HTML de public/ não tem link fixo para o formulário novo (sem JavaScript, os botões caem no formulário antigo; quem troca é a chave)', async () => {
     for (const f of [...PAGINAS, ...LEGAIS, 'proposta.html']) {
       const h = fs.readFileSync(path.join(PUB, f), 'utf8');
       assert.ok(!/<a\b[^>]*href="[^"]*proposta\.html/.test(h), f);
     }
   });
-  await t('chave desligada: nenhum botão aponta para o formulário novo; 20 links seguem em /form/proposta com UTM e ref; 1 conversão por clique', async () => {
-    const { ctx } = await contexto(b); let total = 0;
+  await t('chave desligada (simulada, o caminho de volta): nenhum botão aponta para o formulário novo; 20 links seguem em /form/proposta com UTM e ref; 1 conversão por clique', async () => {
+    const { ctx } = await contexto(b, { chave: false }); let total = 0;
     for (const pg of PAGINAS) {
       const p = await ctx.newPage(); await p.goto(BASE + '/' + pg + UTM); await semNavegar(p);
       assert.strictEqual(await p.evaluate(() => window.ANTERE_FORM_NOVO), false, pg);
@@ -97,8 +97,8 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     assert.strictEqual(total, 20);
     await ctx.close();
   });
-  await t('chave desligada: /proposta.html leva ao formulário antigo, com as UTM', async () => {
-    const { ctx } = await contexto(b); const p = await ctx.newPage(); let destino = null;
+  await t('chave desligada (simulada): /proposta.html leva ao formulário antigo, com as UTM', async () => {
+    const { ctx } = await contexto(b, { chave: false }); const p = await ctx.newPage(); let destino = null;
     await p.route('https://raregoat-n8n.cloudfy.live/form/proposta**', r => { destino = r.request().url(); r.abort(); });
     await p.goto(BASE + '/proposta.html' + UTM).catch(() => {}); await p.waitForTimeout(300);
     assert.ok(destino, 'não redirecionou');
@@ -107,8 +107,8 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
   });
 
   // ---------------- chave ligada (simulada) ----------------
-  await t('chave ligada (simulada): os 20 links vão para /proposta.html com UTM e ref, e o clique não conta conversão', async () => {
-    const { ctx } = await contexto(b, { chave: true }); let total = 0;
+  await t('chave ligada (o site-config.js publicado): os 20 links vão para /proposta.html com UTM e ref, e o clique não conta conversão', async () => {
+    const { ctx } = await contexto(b); let total = 0;
     for (const pg of PAGINAS) {
       const p = await ctx.newPage(); await p.goto(BASE + '/' + pg + UTM); await semNavegar(p);
       const hs = await hrefsProposta(p);
@@ -370,7 +370,7 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
         await p.evaluate((yy) => window.scrollTo(0, yy), y); await p.waitForTimeout(30);
         const r = await p.evaluate(() => {
           const f = document.getElementById('wa-float'), fr = f.getBoundingClientRect(), vis = getComputedStyle(f).visibility !== 'hidden';
-          const cobre = [...document.querySelectorAll('a[href*="/form/proposta"]')].some(c => { if (!c.offsetParent) return false; const b = c.getBoundingClientRect(); return b.width && b.left < fr.right && b.right > fr.left && b.top < fr.bottom && b.bottom > fr.top; });
+          const cobre = [...document.querySelectorAll('a[href*="/form/proposta"], a[href*="proposta.html"]')].some(c => { if (!c.offsetParent) return false; const b = c.getBoundingClientRect(); return b.width && b.left < fr.right && b.right > fr.left && b.top < fr.bottom && b.bottom > fr.top; });
           return { vis, cobre };
         });
         checagens++; if (r.cobre) { ocultou++; assert.ok(!r.vis, pg + ' y=' + y); }
