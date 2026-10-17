@@ -150,3 +150,19 @@ Depois de ir para a `main`, avisar a Operação para tirar o `procura` do contra
 
 **17/10/2026: telas aprovadas pelo Rodrigo; versão gravada na `main` do site.** O site não manda mais `procura`. **Pedido à Operação:** tirar o
 `procura` do contrato e da validação (o pedido antigo, que já começou com `procura`, só termina no formato antigo).
+
+## 17/10/2026, 17h50: chave desligada — "Não encontramos seu pedido" na etapa 2 (teste do Rodrigo no ar, link + PDVet)
+
+- A chave do formulário foi desligada (`window.ANTERE_FORM_NOVO = false`, commit 15e62eb, no ar às 17:50 UTC). Os botões voltaram ao
+  formulário antigo do n8n e a conversão voltou para o clique.
+- **Lado do site conferido (teste com valores aleatórios de `lead_id` e `pedido_token`, link + PDVet, com recarga da página no meio):**
+  - etapa 1 envia `produtos: ["link","pdvet"]`, `caixas` e sem `procura`; recebe `lead_id` (24 hex) e `pedido_token` (32 hex);
+  - etapa 2 envia **exatamente** esse `lead_id` e esse `pedido_token`, mais `razao_social`, `sistema_pdv`, `lojas`, `faixa_link` e `website`;
+  - os dois corpos passam na `validarEtapa1`/`validarEtapa2` da `lib/` da `main` (4e5fb0f) quando a linha do pedido é a da etapa 1.
+- **Hipótese no n8n (para a Operação conferir):** o nó "26 Validar a etapa 2" usa `pedidos[0]`, a **primeira** linha da `form_site_pedidos` com o
+  `lead_id`. Se o mesmo `lead_id` tiver mais de uma linha (por exemplo, o teste das 03h19 com os mesmos dados, se o RD reaproveitar a
+  negociação/lead), a comparação é feita com a linha antiga, o token não bate e a resposta é `404` `pedido_nao_encontrado` — exatamente a
+  mensagem vista. Reproduzido na `lib/`: com uma linha antiga do mesmo `lead_id`, `validarEtapa2` devolve `nao_encontrado`.
+  Correção sugerida: escolher a linha cujo `pedido_token` bate com o enviado (ou a mais recente), e conferir se o `lead_id` pode se repetir.
+- Outras causas que dão o mesmo 404: a linha da etapa 1 não ter sido gravada (ou gravada sem `pedido_token`), ou `procura` gravado fora de
+  `c6pay`/`proposta`. A execução da etapa 2 do teste do Rodrigo mostra qual foi.

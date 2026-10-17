@@ -70,9 +70,9 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
   const b = await chromium.launch();
 
   // ---------------- chave desligada (o estado publicado) ----------------
-  await t('site-config.js publicado com a chave do formulário ligada (17/10/2026)', async () => {
+  await t('site-config.js publicado com a chave do formulário desligada (17/10/2026, 17h50: pedido não encontrado na etapa 2)', async () => {
     const s = fs.readFileSync(path.join(PUB, 'site-config.js'), 'utf8');
-    assert.match(s, /^window\.ANTERE_FORM_NOVO = true;/m);
+    assert.match(s, /^window\.ANTERE_FORM_NOVO = false;/m);
   });
   await t('o HTML de public/ não tem link fixo para o formulário novo (sem JavaScript, os botões caem no formulário antigo; quem troca é a chave)', async () => {
     for (const f of [...PAGINAS, ...LEGAIS, 'proposta.html']) {
@@ -80,7 +80,7 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
       assert.ok(!/<a\b[^>]*href="[^"]*proposta\.html/.test(h), f);
     }
   });
-  await t('chave desligada (simulada, o caminho de volta): nenhum botão aponta para o formulário novo; 20 links seguem em /form/proposta com UTM e ref; 1 conversão por clique', async () => {
+  await t('chave desligada (o site-config.js publicado): nenhum botão aponta para o formulário novo; 20 links seguem em /form/proposta com UTM e ref; 1 conversão por clique', async () => {
     const { ctx } = await contexto(b, { chave: false }); let total = 0;
     for (const pg of PAGINAS) {
       const p = await ctx.newPage(); await p.goto(BASE + '/' + pg + UTM); await semNavegar(p);
@@ -110,8 +110,8 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
   });
 
   // ---------------- chave ligada (simulada) ----------------
-  await t('chave ligada (o site-config.js publicado): os 20 links vão para /proposta.html com UTM e ref, e o clique não conta conversão', async () => {
-    const { ctx } = await contexto(b); let total = 0;
+  await t('chave ligada (simulada): os 20 links vão para /proposta.html com UTM e ref, e o clique não conta conversão', async () => {
+    const { ctx } = await contexto(b, { chave: true }); let total = 0;
     for (const pg of PAGINAS) {
       const p = await ctx.newPage(); await p.goto(BASE + '/' + pg + UTM); await semNavegar(p);
       const hs = await hrefsProposta(p);
