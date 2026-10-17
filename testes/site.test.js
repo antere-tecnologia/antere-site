@@ -24,9 +24,9 @@ const LEGAIS = ['legal/privacidade.html', 'legal/termos.html', 'legal/exclusao-d
 const CNPJ = '11.222.333/0001-81';
 let lib = null;
 try { lib = require(path.join(__dirname, '..', '..', 'antere-automacao', 'n8n', 'lib', 'formulario_site.js')); } catch (e) { lib = null; }
-// 17/10: os produtos passaram para a etapa 1 (contrato novo, a combinar com a Operação). Só confere os corpos com a lib que já tiver o
-// contrato novo (aceita a etapa 1 sem caixas e com produtos); com a lib antiga, essa conferência fica de fora.
-const libNova = !!(lib && lib.validarEtapa1({ nome: 'Ana Lima', whatsapp: '11987654321', email: 'a@b.com.br', cnpj: '11222333000181', produtos: ['c6pay'], consentimento_lgpd: true }).ok);
+// 17/10: os produtos passaram para a etapa 1 (contrato publicado pela Operação às 10h50). Só confere os corpos com a lib que já tiver o
+// contrato novo (aceita a etapa 1 com produtos); com a lib antiga, essa conferência fica de fora.
+const libNova = !!(lib && lib.validarEtapa1({ nome: 'Ana Lima', whatsapp: '11987654321', email: 'a@b.com.br', cnpj: '11222333000181', caixas: 1, produtos: ['c6pay'], consentimento_lgpd: true }).ok);
 
 let ok = 0, falhas = 0;
 async function t(nome, f) {
@@ -127,14 +127,15 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
 
   // ---------------- formulário (?previa=1, webhooks simulados) ----------------
   const soPdvet = (c) => Array.isArray(c.produtos) && c.produtos.length === 1 && c.produtos[0] === 'pdvet';
+  const ordem = ['tef', 'c6pay', 'link', 'pdvet'], adicional = (c) => !soPdvet(c) && (c.produtos || []).includes('pdvet') ? { interesse_adicional: ['pdvet'], url_pdvet: 'https://portal.pdvet.com.br/cadastro' } : {};
   const etapa1Ok = (empresa) => (url, c) => url === E1
     ? (soPdvet(c) ? { status: 200, body: { ok: true, lead_id: 'a'.repeat(24), pedido_token: '', proximo: 'pdvet', url: 'https://portal.pdvet.com.br/cadastro', empresa } }
-      : { status: 200, body: { ok: true, lead_id: 'a'.repeat(24), pedido_token: 'b'.repeat(32), proximo: 'etapa2', empresa } })
+      : { status: 200, body: { ok: true, lead_id: 'a'.repeat(24), pedido_token: 'b'.repeat(32), proximo: 'etapa2', produtos: ordem.filter(x => (c.produtos || []).includes(x)), empresa, ...adicional(c) } })
     : { status: 200, body: { ok: true, status: 'proposta_enviada', email: c.lead_id ? 'maria@empresa.com.br' : '', escalonar: c.faixa_link === 'acima_10000' } };
   // produtos: lista de tef, c6pay, link e pdvet ('c6pay' sozinho = ['c6pay'])
   async function preencheE1(p, produtos) {
     await p.fill('#f-nome', 'Maria da Silva'); await p.type('#f-whatsapp', '11987654321'); await p.fill('#f-email', 'maria@empresa.com.br');
-    await p.type('#f-cnpj', CNPJ.replace(/\D/g, ''));
+    await p.type('#f-cnpj', CNPJ.replace(/\D/g, '')); await p.fill('#f-caixas', '3');
     for (const v of [].concat(produtos)) await p.check('input[name=produtos][value=' + v + ']');
     await p.check('#f-lgpd');
   }
@@ -144,7 +145,7 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP) }); const p = await ctx.newPage();
     await p.goto(BASE + '/proposta.html?previa=1');
     await p.click('#b1');
-    for (const c of ['nome', 'whatsapp', 'email', 'cnpj', 'produtos', 'consentimento_lgpd']) assert.ok((await p.textContent('#e-' + c)).length > 0, c);
+    for (const c of ['nome', 'whatsapp', 'email', 'cnpj', 'caixas', 'produtos', 'consentimento_lgpd']) assert.ok((await p.textContent('#e-' + c)).length > 0, c);
     await preencheE1(p, 'c6pay'); await p.fill('#f-cnpj', ''); await p.type('#f-cnpj', '11222333000182'); await p.click('#b1');
     assert.match(await p.textContent('#e-cnpj'), /não batem/);
     assert.strictEqual(await p.inputValue('#f-whatsapp'), '(11) 98765-4321');
@@ -163,12 +164,11 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
       ['checkbox', 'c6pay', 'C6 Pay: crédito a partir de 1,84% recebendo em 31 dias, débito a partir de 0,82% e Pix grátis'],
       ['checkbox', 'link', 'Link de pagamento / pagamento online'],
       ['checkbox', 'pdvet', 'Sistema PDV (PDVet)']]);
-    assert.strictEqual(await p.locator('#pf-e1 #f-caixas').count(), 0, 'caixas saiu da etapa 1');
     await preencheE1(p, ['tef', 'c6pay', 'link', 'pdvet']); await p.click('#b1');
     await p.waitForSelector('#pf-e2:not([hidden])');
     const c1 = reqs[0].corpo;
-    assert.deepStrictEqual([c1.nome, c1.whatsapp, c1.email, c1.cnpj, c1.produtos, c1.procura, c1.consentimento_lgpd, c1.website], ['Maria da Silva', '(11) 98765-4321', 'maria@empresa.com.br', '11222333000181', ['tef', 'c6pay', 'link', 'pdvet'], 'c6pay', true, '']);
-    assert.ok(!('caixas' in c1), 'caixas não vai na etapa 1');
+    assert.deepStrictEqual([c1.nome, c1.whatsapp, c1.email, c1.cnpj, c1.caixas, c1.produtos, c1.consentimento_lgpd, c1.website], ['Maria da Silva', '(11) 98765-4321', 'maria@empresa.com.br', '11222333000181', 3, ['tef', 'c6pay', 'link', 'pdvet'], true, '']);
+    assert.ok(!('procura' in c1), 'procura deixou de ser mandado (contrato de 17/10)');
     assert.deepStrictEqual([c1.utm_source, c1.utm_medium, c1.utm_campaign, c1.gclid, c1.ref], ['google', 'cpc', 'pagamento_integrado', 'XYZ', 'site_institucional']);
     if (libNova) assert.ok(lib.validarEtapa1(c1).ok, JSON.stringify(lib.validarEtapa1(c1)));
     const conv = await eventos(p, 'conversion'); assert.strictEqual(conv.length, 1); assert.strictEqual(conv[0].send_to, SEND_TO);
@@ -184,21 +184,22 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     assert.strictEqual(await p.locator('input[name=conta_pj_c6]').count(), 0); assert.ok(!/conta PJ|isenta/i.test(await p.textContent('#pf-e2')));
     assert.strictEqual(await p.locator('#pf-e2 input[name=produtos]').count(), 0, 'a etapa 2 não pergunta mais os produtos');
     await p.click('#b-correto'); assert.ok(await p.isVisible('#m-correto'));
-    assert.ok(await p.isVisible('#c-tef') && await p.isVisible('#c-c6') && await p.isVisible('#c-link'));
+    assert.ok(await p.isVisible('#f-sistema') && await p.isVisible('#f-lojas') && await p.isVisible('#c-c6') && await p.isVisible('#c-link'));
     assert.strictEqual(await p.locator('#f-faixa option[value]:not([value=""])').count(), 8);
     await p.click('#b2');
-    for (const c of ['sistema_pdv', 'lojas', 'caixas', 'vendas_cartao', 'recebimento', 'faixa_link']) assert.ok((await p.textContent('#e-' + c)).length > 0, c);
+    for (const c of ['sistema_pdv', 'lojas', 'vendas_cartao', 'recebimento', 'faixa_link']) assert.ok((await p.textContent('#e-' + c)).length > 0, c);
     assert.strictEqual(reqs.length, 1);
-    await p.fill('#f-sistema', 'PDVet'); await p.fill('#f-lojas', '2'); await p.fill('#f-caixas', '3'); await p.selectOption('#f-faixa', '201_600');
+    await p.fill('#f-sistema', 'PDVet'); await p.fill('#f-lojas', '2'); await p.selectOption('#f-faixa', '201_600');
     await p.check('input[name=vendas_cartao][value="8_30mil"]'); await p.check('input[name=recebimento][value=d1]');
     assert.match(await p.textContent('#pf-e2'), /Se você parar aqui, tudo bem: nossa equipe comercial entra em contato para completar\./);
     assert.ok(!/me ligue/i.test(await p.textContent('main')));
     await p.click('#b2'); await p.waitForSelector('#pf-fim:not([hidden])');
     const c2 = reqs[1].corpo;
-    assert.deepStrictEqual(c2, { lead_id: 'a'.repeat(24), pedido_token: 'b'.repeat(32), razao_social: 'EMPRESA EXEMPLO LTDA', produtos: ['tef', 'c6pay', 'link', 'pdvet'], website: '', sistema_pdv: 'PDVet', lojas: 2, caixas: 3, vendas_cartao: '8_30mil', recebimento: 'd1', faixa_link: '201_600' });
+    assert.deepStrictEqual(c2, { lead_id: 'a'.repeat(24), pedido_token: 'b'.repeat(32), razao_social: 'EMPRESA EXEMPLO LTDA', sistema_pdv: 'PDVet', website: '', lojas: 2, vendas_cartao: '8_30mil', recebimento: 'd1', faixa_link: '201_600' });
     assert.ok(!('conta_pj_c6' in c2), 'conta_pj_c6 saiu do contrato em 17/10');
-    if (libNova) assert.ok(lib.validarEtapa2(c2, { lead_id: c2.lead_id, pedido_token: c2.pedido_token, procura: 'c6pay', produtos: c2.produtos }).ok);
+    if (libNova) assert.ok(lib.validarEtapa2(c2, { lead_id: c2.lead_id, pedido_token: c2.pedido_token, procura: 'proposta', produtos: 'tef,c6pay,link,pdvet' }).ok, JSON.stringify(lib.validarEtapa2(c2, { lead_id: c2.lead_id, pedido_token: c2.pedido_token, procura: 'proposta', produtos: 'tef,c6pay,link,pdvet' })));
     assert.strictEqual(await p.textContent('#pf-fim h1'), 'Sua proposta foi enviada.');
+    assert.ok(await p.isVisible('#pdvet-adicional'), 'PDVet junto: oferta do portal na tela final'); assert.strictEqual(await p.getAttribute('#l-pdvet-adicional', 'href'), 'https://portal.pdvet.com.br/cadastro');
     assert.strictEqual(await p.textContent('#v-email'), 'maria@empresa.com.br');
     assert.match(await p.textContent('#t-fim'), /Spam e Promoções/);
     assert.strictEqual(await p.textContent('#pf-fim a[data-wa]'), 'Tirar dúvidas no WhatsApp');
@@ -225,17 +226,20 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
       if (!grupos) { await q.waitForSelector('#pf-pdvet:not([hidden])'); assert.strictEqual(await q.getAttribute('#l-pdvet', 'href'), 'https://portal.pdvet.com.br/cadastro'); }
       else {
         await q.waitForSelector('#pf-e2:not([hidden])');
-        assert.deepStrictEqual({ tef: await q.isVisible('#c-tef'), c6: await q.isVisible('#c-c6'), link: await q.isVisible('#c-link') }, grupos, prods.join('+'));
-        if (grupos.tef) { await q.fill('#f-sistema', 'Linx'); await q.fill('#f-lojas', '1'); await q.fill('#f-caixas', '2'); }
+        assert.deepStrictEqual({ tef: grupos.tef, c6: await q.isVisible('#c-c6'), link: await q.isVisible('#c-link') }, grupos, prods.join('+'));
+        assert.ok(await q.isVisible('#f-sistema') && await q.isVisible('#f-lojas'), 'sistema PDV e lojas sempre (contrato publicado)');
+        await q.fill('#f-sistema', 'Linx'); await q.fill('#f-lojas', '1');
         if (grupos.c6) { await q.check('input[name=vendas_cartao][value=ate_8mil]'); await q.check('input[name=recebimento][value=d31]'); }
         if (grupos.link) await q.selectOption('#f-faixa', 'ate_200');
         await q.click('#b2'); await q.waitForSelector('#pf-fim:not([hidden])');
         const c2 = x.reqs[1].corpo, campos = Object.keys(c2).sort();
-        const esperados = ['lead_id', 'pedido_token', 'produtos', 'razao_social', 'website'].concat(grupos.tef ? ['caixas', 'lojas', 'sistema_pdv'] : [], grupos.c6 ? ['recebimento', 'vendas_cartao'] : [], grupos.link ? ['faixa_link'] : []).sort();
+        const esperados = ['lead_id', 'lojas', 'pedido_token', 'razao_social', 'sistema_pdv', 'website'].concat(grupos.c6 ? ['recebimento', 'vendas_cartao'] : [], grupos.link ? ['faixa_link'] : []).sort();
         assert.deepStrictEqual(campos, esperados, prods.join('+'));
-        if (libNova) assert.ok(lib.validarEtapa2(c2, { lead_id: c2.lead_id, pedido_token: c2.pedido_token, procura: 'c6pay', produtos: c2.produtos }).ok, prods.join('+'));
+        if (libNova) assert.ok(lib.validarEtapa2(c2, { lead_id: c2.lead_id, pedido_token: c2.pedido_token, procura: 'proposta', produtos: prods.join(',') }).ok, prods.join('+'));
+        await q.waitForTimeout(50); assert.strictEqual(await q.isVisible('#pdvet-adicional'), prods.includes('pdvet'), 'oferta do PDVet: ' + prods.join('+'));
       }
-      assert.deepStrictEqual([x.reqs[0].corpo.produtos, x.reqs[0].corpo.procura], [prods, procura]);
+      assert.deepStrictEqual(x.reqs[0].corpo.produtos, prods); assert.ok(!('procura' in x.reqs[0].corpo));
+      if (libNova) assert.ok(lib.validarEtapa1(x.reqs[0].corpo).ok, prods.join('+'));
       assert.strictEqual((await eventos(q, 'conversion')).length, 1, 'conversão no envio da etapa 1: ' + prods.join('+'));
       await x.ctx.close();
     }
@@ -245,7 +249,7 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok({ cnpj_confirmado: false, razao_social: '', cidade: '', uf: '' }) }); const p = await ctx.newPage();
     await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, ['link']); await p.click('#b1'); await p.waitForSelector('#pf-e2:not([hidden])');
     assert.ok(await p.isHidden('#bloco-empresa')); assert.ok(await p.isVisible('#f-razao'));
-    await p.selectOption('#f-faixa', 'acima_10000');
+    await p.fill('#f-sistema', 'Nenhum'); await p.fill('#f-lojas', '1'); await p.selectOption('#f-faixa', 'acima_10000');
     await p.click('#b2'); assert.strictEqual(await p.textContent('#e-razao_social'), 'Informe a razão social.'); assert.strictEqual(reqs.length, 1);
     await p.fill('#f-razao', 'Minha Empresa Ltda'); await p.click('#b2'); await p.waitForSelector('#pf-fim:not([hidden])');
     assert.strictEqual(reqs[1].corpo.razao_social, 'Minha Empresa Ltda'); assert.ok(!('conta_pj_c6' in reqs[1].corpo)); assert.ok(!('vendas_cartao' in reqs[1].corpo)); assert.ok(await p.isVisible('#t-escalonar'));
@@ -253,7 +257,7 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     const x = await contexto(b, { webhooks: etapa1Ok(EMP) }); const p2 = await x.ctx.newPage();
     await p2.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p2, ['tef', 'c6pay']); await p2.click('#b1'); await p2.waitForSelector('#pf-e2:not([hidden])');
     await p2.click('#b-corrigir'); assert.ok(await p2.isVisible('#f-razao')); await p2.fill('#f-razao', 'Nome Corrigido SA');
-    await p2.fill('#f-sistema', 'Linx'); await p2.fill('#f-lojas', '1'); await p2.fill('#f-caixas', '1'); await p2.check('input[name=vendas_cartao][value=ate_8mil]'); await p2.check('input[name=recebimento][value=d31]');
+    await p2.fill('#f-sistema', 'Linx'); await p2.fill('#f-lojas', '1'); await p2.check('input[name=vendas_cartao][value=ate_8mil]'); await p2.check('input[name=recebimento][value=d31]');
     await p2.click('#b2'); await p2.waitForSelector('#pf-fim:not([hidden])'); assert.strictEqual(x.reqs[1].corpo.razao_social, 'Nome Corrigido SA'); assert.ok(!('faixa_link' in x.reqs[1].corpo));
     await x.ctx.close();
   });
@@ -280,7 +284,9 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
   });
 
   await t('formulário: tema escuro em todas as telas e estados (sem fundo claro, contraste ≥ 4,5, controles nativos escuros), com o aparelho em modo claro ou escuro', async () => {
-    const auditar = (p, nome) => p.evaluate((nome) => {
+    // o ponteiro sai da tela antes de medir: o estado de "passar o mouse" de um botão não é o tema da página
+    const auditar = async (p, nome) => { await p.mouse.move(0, 0); await p.waitForTimeout(250); return medir(p, nome); };
+    const medir = (p, nome) => p.evaluate((nome) => {
       const rgb = (s) => { const m = s.match(/rgba?\(([^)]+)\)/); if (!m) return null; const v = m[1].split(',').map(parseFloat); return { r: v[0], g: v[1], b: v[2], a: v.length > 3 ? v[3] : 1 }; };
       const lum = (c) => { const f = (x) => { x /= 255; return x <= .03928 ? x / 12.92 : Math.pow((x + .055) / 1.055, 2.4); }; return .2126 * f(c.r) + .7152 * f(c.g) + .0722 * f(c.b); };
       const fundo = (el) => { const pilha = []; for (let e = el; e; e = e.parentElement) { const c = rgb(getComputedStyle(e).backgroundColor); if (c && c.a > 0) pilha.push(c); if (c && c.a >= 1) break; }
@@ -321,7 +327,7 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
       await abre(); modo = 'etapa2'; await preencheE1(p, ['tef', 'c6pay', 'link']); await p.click('#b1'); await p.waitForSelector('#pf-e2:not([hidden])');
       probs.push(...await auditar(p, nome('etapa 2')));
       await p.click('#b2'); probs.push(...await auditar(p, nome('erros da etapa 2'))); await p.click('#b-corrigir'); probs.push(...await auditar(p, nome('corrigir')));
-      await p.fill('#f-sistema', 'PDVet'); await p.fill('#f-lojas', '2'); await p.fill('#f-caixas', '3'); await p.selectOption('#f-faixa', '201_600'); await p.check('input[name=vendas_cartao][value="8_30mil"]'); await p.check('input[name=recebimento][value=d1]');
+      await p.fill('#f-sistema', 'PDVet'); await p.fill('#f-lojas', '2'); await p.selectOption('#f-faixa', '201_600'); await p.check('input[name=vendas_cartao][value="8_30mil"]'); await p.check('input[name=recebimento][value=d1]');
       await p.click('#b2'); await p.waitForTimeout(80); probs.push(...await auditar(p, nome('carregando etapa 2')));
       await p.waitForSelector('#pf-fim:not([hidden])'); probs.push(...await auditar(p, nome('tela final')));
       await ctx.close();
@@ -372,7 +378,7 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
       assert.strictEqual(await p.inputValue('#f-email'), 'contato@empresa.com.br'); assert.strictEqual(await p.inputValue('#f-nome'), 'Carla Souza');
       const u = new URL(p.url()); assert.ok(!u.searchParams.has('lead_id') && !u.searchParams.has('token'), p.url()); assert.strictEqual(u.searchParams.get('utm_source'), 'lote');
       assert.strictEqual(reqs[0].metodo, 'GET');
-      await p.type('#f-whatsapp', '11987654321'); await p.type('#f-cnpj', '11222333000181'); await p.check('input[name=produtos][value=pdvet]'); await p.check('#f-lgpd');
+      await p.type('#f-whatsapp', '11987654321'); await p.type('#f-cnpj', '11222333000181'); await p.fill('#f-caixas', '1'); await p.check('input[name=produtos][value=pdvet]'); await p.check('#f-lgpd');
       if (novo) await p.fill('#f-email', novo);
       await p.click('#b1'); await p.waitForSelector('#pf-pdvet:not([hidden])');
       const c = reqs[1].corpo;

@@ -41,7 +41,7 @@ Aprovado pelo Rodrigo para o formulário novo (proposta da Operação: `antere-a
 
 ### Formulário: produtos na etapa 1 (17/10/2026, em preparação)
 
-"O que você procura?" vira múltipla escolha com 4 opções (TEF, C6 Pay, link, PDVet; pelo menos uma). Só PDVet vai ao cadastro da PDVet; PDVet com outro produto segue para a etapa 2, que mostra só os campos dos produtos escolhidos (TEF: sistema PDV, lojas e caixas; C6 Pay: vendas no cartão e prazo de recebimento; link: volume de transações). Depende do contrato novo no n8n: proposta em `propostas/formulario_email_operacao_1610.md`. Só vai para a `main` depois da publicação da Operação.
+"O que você procura?" vira múltipla escolha com 4 opções (TEF, C6 Pay, link, PDVet; pelo menos uma). Só PDVet vai ao cadastro da PDVet; PDVet com outro produto segue para a etapa 2, que mostra só os campos dos produtos escolhidos (TEF: sistema PDV, lojas e caixas; C6 Pay: vendas no cartão e prazo de recebimento; link: volume de transações). Contrato publicado pela Operação em 17/10, 10h50; o site segue o contrato publicado (nº de caixas na etapa 1; sistema PDV e lojas na etapa 2 para todos os produtos; com PDVet junto, a tela final oferece o portal da PDVet). Pronto no branch `claude/kind-galileo-2wjuc2`; vai para a `main` depois da validação das telas pelo Rodrigo.
 
 ## WhatsApp (15/10/2026)
 

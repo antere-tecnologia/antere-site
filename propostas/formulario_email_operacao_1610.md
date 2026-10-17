@@ -138,3 +138,12 @@ para a `main` do site junto com a publicação do contrato novo no n8n (senão o
 - **Pedido à Operação:** atualizar `validarEtapa1`/`validarEtapa2` (`lib/formulario_site.js`), o `pedidoGeracao` (o que a Geração usa quando
   não houver `sistema_pdv`/`lojas`, por exemplo só C6 Pay ou só link) e o contrato; publicar e avisar a sessão Site, que então grava na
   `main` a versão do branch (testes prontos: `testes/site.test.js`, com conferência pela `lib/` assim que ela tiver o contrato novo).
+
+**17/10/2026, tarde: contrato publicado pela Operação às 10h50** (`antere-automacao/docs/aviso_site_produtos_etapa1_1710.md`, main 258d546).
+O site, no branch `claude/kind-galileo-2wjuc2` (fora da `main`), segue o contrato publicado:
+- etapa 1 manda `produtos` (lista) e `caixas`, e **não manda mais `procura`**;
+- etapa 2 manda sempre `sistema_pdv` e `lojas`, mais `vendas_cartao`/`recebimento` com `c6pay` e `faixa_link` com `link`; não manda `produtos`;
+- com PDVet junto de outro produto, a tela final oferece o portal da PDVet (`interesse_adicional` e `url_pdvet` da resposta).
+Diferenças em relação ao pedido original das telas (a decidir pelo Rodrigo): o **nº de caixas ficou na etapa 1** e **sistema PDV e lojas aparecem
+para todos os produtos**, porque o contrato publicado exige assim. Os corpos passam na `validarEtapa1`/`validarEtapa2` de 258d546.
+Depois de ir para a `main`, avisar a Operação para tirar o `procura` do contrato.

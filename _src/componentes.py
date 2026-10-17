@@ -218,6 +218,7 @@ FORM_BODY = r"""
     <div class="campo"><label for="f-email">E-mail</label><input id="f-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="120" required><span class="dica">A proposta chega neste e-mail.</span><p class="erro" id="e-email"></p>
       <div class="sugestao" id="sug-email" role="status" aria-live="polite" hidden><span>Você quis dizer <strong id="sug-texto"></strong>?</span><div class="acoes"><button class="btn btn-primary" type="button" id="sug-sim">Sim, trocar</button><button class="btn btn-ghost" type="button" id="sug-nao">Não, está certo</button></div></div></div>
     <div class="campo"><label for="f-cnpj">CNPJ</label><input id="f-cnpj" name="cnpj" type="text" inputmode="numeric" autocomplete="off" placeholder="00.000.000/0000-00" maxlength="18" required><p class="erro" id="e-cnpj"></p></div>
+    <div class="campo"><label for="f-caixas">Nº de caixas</label><input id="f-caixas" name="caixas" type="number" inputmode="numeric" min="1" max="999" step="1" required><span class="dica">Quantos pontos de venda (caixas) a empresa tem.</span><p class="erro" id="e-caixas"></p></div>
     <fieldset class="campo" id="g-produtos"><legend>O que você procura?</legend><span class="dica">Marque uma ou mais opções.</span>
       <label class="opcao"><input type="checkbox" name="produtos" value="tef"> TEF integrado ao caixa</label>
       <label class="opcao"><input type="checkbox" name="produtos" value="c6pay"> C6 Pay: crédito a partir de 1,84% recebendo em 31 dias, débito a partir de 0,82% e Pix grátis</label>
@@ -250,11 +251,8 @@ FORM_BODY = r"""
       <p class="ok-marca" id="m-correto" hidden>Dados confirmados.</p>
     </div>
     <div class="campo" id="c-razao" hidden><label for="f-razao">Razão social</label><input id="f-razao" name="razao_social" type="text" autocomplete="organization" maxlength="120"><span class="dica" id="d-razao"></span><p class="erro" id="e-razao_social"></p></div>
-    <div class="grupo" id="c-tef" hidden><h2 class="grupo-t">TEF integrado ao caixa</h2>
-      <div class="campo"><label for="f-sistema">Sistema PDV</label><input id="f-sistema" name="sistema_pdv" type="text" maxlength="80"><span class="dica">O sistema de caixa que você usa hoje. Se não usa nenhum, escreva "nenhum".</span><p class="erro" id="e-sistema_pdv"></p></div>
-      <div class="campo"><label for="f-lojas">Nº de lojas</label><input id="f-lojas" name="lojas" type="number" inputmode="numeric" min="1" max="999" step="1"><p class="erro" id="e-lojas"></p></div>
-      <div class="campo"><label for="f-caixas">Nº de caixas</label><input id="f-caixas" name="caixas" type="number" inputmode="numeric" min="1" max="999" step="1"><span class="dica">Quantos pontos de venda (caixas) a empresa tem.</span><p class="erro" id="e-caixas"></p></div>
-    </div>
+    <div class="campo"><label for="f-sistema">Sistema PDV</label><input id="f-sistema" name="sistema_pdv" type="text" maxlength="80" required><span class="dica">O sistema de caixa que você usa hoje. Se não usa nenhum, escreva "nenhum".</span><p class="erro" id="e-sistema_pdv"></p></div>
+    <div class="campo"><label for="f-lojas">Nº de lojas</label><input id="f-lojas" name="lojas" type="number" inputmode="numeric" min="1" max="999" step="1" required><p class="erro" id="e-lojas"></p></div>
     <div class="grupo" id="c-c6" hidden><h2 class="grupo-t">C6 Pay</h2>
       <fieldset class="campo" id="c-vendas"><legend>Vendas no cartão por mês</legend>
         <label class="opcao"><input type="radio" name="vendas_cartao" value="ate_8mil"> Até R$ 8 mil</label>
@@ -283,6 +281,7 @@ FORM_BODY = r"""
   <h1 tabindex="-1">Sua proposta foi enviada.</h1>
   <p class="lede" id="t-fim">Enviamos para <strong id="v-email"></strong>. Se não encontrar na caixa de entrada, procure também nas pastas Spam e Promoções.</p>
   <p class="aviso" id="t-escalonar" hidden>Pelo volume informado, um consultor vai falar com você para ajustar a proposta.</p>
+  <div class="empresa" id="pdvet-adicional" hidden><strong>Você também marcou o Sistema PDV (PDVet).</strong><p class="aviso">Para conhecer e contratar o sistema PDV, continue no formulário da PDVet.</p><div class="acoes"><a class="btn btn-ghost" id="l-pdvet-adicional" href="__PDVET__" rel="noopener">Continuar no site da PDVet</a></div></div>
   <div class="acoes"><a class="btn btn-primary" data-wa="formulario_fim" href="https://wa.me/__NUM__" target="_blank" rel="noopener">Tirar dúvidas no WhatsApp</a></div>
 </div>
 
@@ -362,25 +361,24 @@ var cad=null;
 // ---------- etapa 1
 var f1=$('f1'),b1=$('b1'),s1=$('s1');
 f1.addEventListener('submit',function(e){e.preventDefault();limpaErros(f1);s1.textContent='';
- var c={nome:f1.nome.value.trim(),whatsapp:f1.whatsapp.value.trim(),email:f1.email.value.trim(),cnpj:dig(f1.cnpj.value),produtos:marcados(f1,'produtos'),consentimento_lgpd:$('f-lgpd').checked,website:f1.website.value};
+ var c={nome:f1.nome.value.trim(),whatsapp:f1.whatsapp.value.trim(),email:f1.email.value.trim(),cnpj:dig(f1.cnpj.value),caixas:f1.caixas.value.trim(),produtos:marcados(f1,'produtos'),consentimento_lgpd:$('f-lgpd').checked,website:f1.website.value};
  var er=[];
  if(c.nome.length<2||!/[A-Za-zÀ-ÿ]/.test(c.nome))er.push({campo:'nome',erro:c.nome?'invalido':'obrigatorio'});
  if(!zapOk(c.whatsapp))er.push({campo:'whatsapp',erro:c.whatsapp?'invalido':'obrigatorio'});
  if(!/^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$/.test(c.email))er.push({campo:'email',erro:c.email?'invalido':'obrigatorio'});
  if(!cnpjOk(c.cnpj))er.push({campo:'cnpj',erro:c.cnpj?'invalido':'obrigatorio'});
+ var cx=int(c.caixas);if(!(cx>=1&&cx<=999))er.push({campo:'caixas',erro:c.caixas?'invalido':'obrigatorio'});
  if(!c.produtos.length)er.push({campo:'produtos',erro:'obrigatorio'});
  if(!c.consentimento_lgpd)er.push({campo:'consentimento_lgpd',erro:'obrigatorio'});
  if(er.length){marca(er);return}
  if(confereEmail()){$('sug-email').scrollIntoView({block:'center'});$('sug-sim').focus();return}
- // compatibilidade com o contrato anterior: procura = pdvet só quando PDVet é o único produto
- c.procura=(c.produtos.length===1&&c.produtos[0]==='pdvet')?'pdvet':'c6pay';
- var o=origem();for(var k in o)c[k]=o[k];
+ c.caixas=cx;var o=origem();for(var k in o)c[k]=o[k];
  if(cad){c.lead_id_cadastro=cad.lead_id;c.token_cadastro=cad.token;c.email_alterado=c.email.toLowerCase()!==cad.email.toLowerCase()}
  b1.disabled=true;s1.textContent='Enviando e consultando o CNPJ…';
  envia(E1,c).then(function(x){var j=x.j;b1.disabled=false;s1.textContent='';
   if(x.status===200&&j.ok){
    if(j.proximo==='pdvet'){conversao();$('l-pdvet').href=(j.url&&/^https:\/\//.test(j.url))?j.url:PDVET;mostra('pf-pdvet');return}
-   if(j.proximo==='etapa2'&&j.lead_id&&j.pedido_token){conversao();st.lead_id=j.lead_id;st.pedido_token=j.pedido_token;st.produtos=c.produtos;st.email=c.email;st.cnpj=c.cnpj;st.empresa=j.empresa||{};salva();preparaE2();mostra('pf-e2');return}
+   if(j.proximo==='etapa2'&&j.lead_id&&j.pedido_token){conversao();st.lead_id=j.lead_id;st.pedido_token=j.pedido_token;st.produtos=(Array.isArray(j.produtos)&&j.produtos.length)?j.produtos:c.produtos;st.adicional=(Array.isArray(j.interesse_adicional)&&j.interesse_adicional.indexOf('pdvet')>=0)?((j.url_pdvet&&/^https:\/\//.test(j.url_pdvet))?j.url_pdvet:PDVET):'';st.email=c.email;st.cnpj=c.cnpj;st.empresa=j.empresa||{};salva();preparaE2();mostra('pf-e2');return}
    mostra('pf-fim');$('t-fim').textContent='Recebemos seus dados. Nossa equipe comercial entra em contato.';return}
   if(x.status===422&&j.erros){marca(j.erros);j.erros.forEach(function(y){if(y.campo==='email'&&y.sugestao){var sg=String(y.sugestao),v=$('f-email').value.trim();mostraSugestao(v,sg.indexOf('@')>0?sg:v.slice(0,v.lastIndexOf('@')+1)+sg)}});return}
   s1.textContent=j.mensagem||FALHA}).catch(function(){b1.disabled=false;s1.textContent=FALHA})});
@@ -388,19 +386,18 @@ f1.addEventListener('submit',function(e){e.preventDefault();limpaErros(f1);s1.te
 // ---------- etapa 2
 var f2=$('f2'),b2=$('b2'),s2=$('s2');
 function preparaE2(){var em=st.empresa||{},conf=em.cnpj_confirmado===true&&em.razao_social;
- $('v-cnpj').textContent=mCnpj(st.cnpj||'');var pr=st.produtos||[];$('c-tef').hidden=pr.indexOf('tef')<0;$('c-c6').hidden=pr.indexOf('c6pay')<0;$('c-link').hidden=pr.indexOf('link')<0;
+ $('v-cnpj').textContent=mCnpj(st.cnpj||'');var pr=st.produtos||[];$('c-c6').hidden=pr.indexOf('c6pay')<0;$('c-link').hidden=pr.indexOf('link')<0;
  if(conf){$('bloco-empresa').hidden=false;$('v-razao').textContent=em.razao_social;$('v-cidade').textContent=[em.cidade,em.uf].filter(Boolean).join('/')||'—';$('c-razao').hidden=true;$('f-razao').value=em.razao_social;st.razaoConfirmada=false}
  else{$('bloco-empresa').hidden=true;$('c-razao').hidden=false;$('f-razao').value='';$('d-razao').textContent='Não conseguimos consultar o CNPJ agora. Digite a razão social da empresa.'}}
 $('b-correto').addEventListener('click',function(){$('acoes-empresa').hidden=true;$('m-correto').hidden=false;$('c-razao').hidden=true;$('f-razao').value=(st.empresa||{}).razao_social||''});
 $('b-corrigir').addEventListener('click',function(){$('acoes-empresa').hidden=true;$('m-correto').hidden=true;$('c-razao').hidden=false;$('d-razao').textContent='Digite a razão social correta.';$('f-razao').focus()});
 f2.addEventListener('submit',function(e){e.preventDefault();limpaErros(f2);s2.textContent='';
- // 17/10 (Rodrigo): os produtos vêm da etapa 1; a etapa 2 pede só os campos dos produtos escolhidos
- var p=st.produtos||[],c={lead_id:st.lead_id,pedido_token:st.pedido_token,razao_social:$('f-razao').value.trim(),produtos:p,website:f2.website.value},er=[];
+ // 17/10 (Rodrigo): os produtos vêm da etapa 1; a etapa 2 pede os campos dos produtos escolhidos (C6 Pay e link)
+ // contrato publicado em 17/10: sistema PDV e lojas sempre; os produtos ficam no pedido da etapa 1 (não vão de novo)
+ var p=st.produtos||[],c={lead_id:st.lead_id,pedido_token:st.pedido_token,razao_social:$('f-razao').value.trim(),sistema_pdv:f2.sistema_pdv.value.trim(),website:f2.website.value},er=[];
  if(c.razao_social.length<2){er.push({campo:'razao_social',erro:'obrigatorio'});$('c-razao').hidden=false}
- if(p.indexOf('tef')>=0){c.sistema_pdv=f2.sistema_pdv.value.trim();var lj=int(f2.lojas.value),cx=int(f2.caixas.value);
-  if(!c.sistema_pdv)er.push({campo:'sistema_pdv',erro:'obrigatorio'});
-  if(lj>=1&&lj<=999)c.lojas=lj;else er.push({campo:'lojas',erro:f2.lojas.value.trim()?'invalido':'obrigatorio'});
-  if(cx>=1&&cx<=999)c.caixas=cx;else er.push({campo:'caixas',erro:f2.caixas.value.trim()?'invalido':'obrigatorio'})}
+ if(!c.sistema_pdv)er.push({campo:'sistema_pdv',erro:'obrigatorio'});
+ var lj=int(f2.lojas.value);if(lj>=1&&lj<=999)c.lojas=lj;else er.push({campo:'lojas',erro:f2.lojas.value.trim()?'invalido':'obrigatorio'});
  if(p.indexOf('c6pay')>=0){c.vendas_cartao=radio(f2,'vendas_cartao');c.recebimento=radio(f2,'recebimento');
   if(!c.vendas_cartao)er.push({campo:'vendas_cartao',erro:'obrigatorio'});if(!c.recebimento)er.push({campo:'recebimento',erro:'obrigatorio'})}
  if(p.indexOf('link')>=0){c.faixa_link=$('f-faixa').value;if(!c.faixa_link)er.push({campo:'faixa_link',erro:'obrigatorio'})}
@@ -408,7 +405,7 @@ f2.addEventListener('submit',function(e){e.preventDefault();limpaErros(f2);s2.te
  if(CONTA_PJ)c.conta_pj_c6=CONTA_PJ;
  b2.disabled=true;s2.textContent='Enviando…';
  envia(E2,c).then(function(x){var j=x.j;b2.disabled=false;s2.textContent='';
-  if((x.status===200&&j.ok)||j.erro==='ja_enviado'){$('v-email').textContent=j.email||st.email||'';$('t-escalonar').hidden=!j.escalonar;st={};salva();mostra('pf-fim');return}
+  if((x.status===200&&j.ok)||j.erro==='ja_enviado'){$('v-email').textContent=j.email||st.email||'';$('t-escalonar').hidden=!j.escalonar;if(st.adicional){$('l-pdvet-adicional').href=st.adicional;$('pdvet-adicional').hidden=false}st={};salva();mostra('pf-fim');return}
   if(x.status===422&&j.erros){marca(j.erros);return}
   if(j.erro==='pedido_nao_encontrado'){st={};salva();s2.textContent='Não encontramos seu pedido. Preencha a etapa 1 de novo.';setTimeout(function(){mostra('pf-e1')},2500);return}
   s2.textContent=j.mensagem||FALHA}).catch(function(){b2.disabled=false;s2.textContent=FALHA})});
