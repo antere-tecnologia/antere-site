@@ -41,7 +41,7 @@ Aprovado pelo Rodrigo para o formulário novo (proposta da Operação: `antere-a
 
 ### Formulário: produtos na etapa 1 (17/10/2026)
 
-"O que você procura?" vira múltipla escolha com 4 opções (TEF, C6 Pay, link, PDVet; pelo menos uma). Só PDVet vai ao cadastro da PDVet; PDVet com outro produto segue para a etapa 2, que mostra só os campos dos produtos escolhidos (TEF: sistema PDV, lojas e caixas; C6 Pay: vendas no cartão e prazo de recebimento; link: volume de transações). Contrato publicado pela Operação em 17/10, 10h50; o site segue o contrato publicado (nº de caixas na etapa 1; sistema PDV e lojas na etapa 2 para todos os produtos; com PDVet junto, a tela final oferece o portal da PDVet). Telas aprovadas pelo Rodrigo e no ar desde 17/10/2026 (a chave do formulário está ligada).
+"O que você procura?" vira múltipla escolha com 4 opções (TEF, C6 Pay, link, PDVet; pelo menos uma). Só PDVet vai ao cadastro da PDVet; PDVet com outro produto segue para a etapa 2, que mostra só os campos dos produtos escolhidos (TEF: sistema PDV, lojas e caixas; C6 Pay: vendas no cartão e prazo de recebimento; link: volume de transações). Contrato publicado pela Operação em 17/10, 10h50; o site segue o contrato publicado (nº de caixas na etapa 1; sistema PDV e lojas na etapa 2 para todos os produtos; com PDVet junto, a tela final oferece o portal da PDVet, com o `url_pdvet` da resposta da etapa 2 desde 17/10). Telas aprovadas pelo Rodrigo e no ar desde 17/10/2026 (a chave do formulário está ligada).
 
 ### Formulário: C6 Pay só com TEF (17/10/2026)
 

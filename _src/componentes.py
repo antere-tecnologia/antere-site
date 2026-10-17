@@ -413,7 +413,7 @@ f2.addEventListener('submit',function(e){e.preventDefault();limpaErros(f2);s2.te
  if(CONTA_PJ)c.conta_pj_c6=CONTA_PJ;
  b2.disabled=true;s2.textContent='Enviando…';
  envia(E2,c).then(function(x){var j=x.j;b2.disabled=false;s2.textContent='';
-  if((x.status===200&&j.ok)||j.erro==='ja_enviado'){$('v-email').textContent=j.email||st.email||'';$('t-escalonar').hidden=!j.escalonar;if(st.adicional){$('l-pdvet-adicional').href=st.adicional;$('pdvet-adicional').hidden=false}st={};salva();mostra('pf-fim');return}
+  if((x.status===200&&j.ok)||j.erro==='ja_enviado'){$('v-email').textContent=j.email||st.email||'';$('t-escalonar').hidden=!j.escalonar;var up=(Array.isArray(j.interesse_adicional)&&j.interesse_adicional.indexOf('pdvet')>=0&&j.url_pdvet&&/^https:\/\//.test(j.url_pdvet))?j.url_pdvet:st.adicional;$('pdvet-adicional').hidden=!up;if(up)$('l-pdvet-adicional').href=up;st={};salva();mostra('pf-fim');return}
   if(x.status===422&&j.erros){if(j.erros.some(function(y){return y.erro==='c6pay_sem_tef'})){s2.textContent=MSG.produtos.c6pay_sem_tef+' Volte à etapa 1 para ajustar.';return}marca(j.erros);return}
   if(j.erro==='pedido_nao_encontrado'){st={};salva();s2.textContent='Não encontramos seu pedido. Preencha a etapa 1 de novo.';setTimeout(function(){mostra('pf-e1')},2500);return}
   s2.textContent=j.mensagem||FALHA}).catch(function(){b2.disabled=false;s2.textContent=FALHA})});

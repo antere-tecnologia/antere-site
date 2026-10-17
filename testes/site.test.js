@@ -288,6 +288,22 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     await y.ctx.close();
   });
 
+  await t('formulário: tela final mostra o portal da PDVet quando a resposta da etapa 2 traz interesse_adicional e url_pdvet (e não mostra sem eles)', async () => {
+    const URL_E2 = 'https://portal.pdvet.com.br/cadastro?origem=antere';
+    for (const [prods, comPdvet] of [[['link', 'pdvet'], true], [['link'], false]]) {
+      // como o n8n desde 17/10, 16h32: a etapa 1 não traz os campos da PDVet; a etapa 2 traz quando a PDVet veio junto
+      const x = await contexto(b, { webhooks: (url, c) => url === E1
+        ? { status: 200, body: { ok: true, lead_id: 'a'.repeat(24), pedido_token: 'b'.repeat(32), proximo: 'etapa2', produtos: prods, empresa: EMP } }
+        : { status: 200, body: { ok: true, status: 'proposta_enviada', email: 'maria@empresa.com.br', escalonar: false, ...(comPdvet ? { interesse_adicional: ['pdvet'], url_pdvet: URL_E2 } : {}) } } });
+      const p = await x.ctx.newPage(); await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, prods); await p.click('#b1');
+      await p.waitForSelector('#pf-e2:not([hidden])'); await p.selectOption('#f-faixa', 'ate_200'); await p.click('#b2'); await p.waitForSelector('#pf-fim:not([hidden])');
+      assert.strictEqual(await p.textContent('#pf-fim h1'), 'Sua proposta foi enviada.');
+      assert.strictEqual(await p.isVisible('#pdvet-adicional'), comPdvet, prods.join('+'));
+      if (comPdvet) { assert.strictEqual(await p.getAttribute('#l-pdvet-adicional', 'href'), URL_E2); assert.strictEqual(await p.textContent('#l-pdvet-adicional'), 'Continuar no site da PDVet'); }
+      await x.ctx.close();
+    }
+  });
+
   await t('formulário: CNPJ não consultado pede a razão social digitada; "Corrigir" abre o campo', async () => {
     const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok({ cnpj_confirmado: false, razao_social: '', cidade: '', uf: '' }) }); const p = await ctx.newPage();
     await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, ['link']); await p.click('#b1'); await p.waitForSelector('#pf-e2:not([hidden])');

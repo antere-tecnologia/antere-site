@@ -191,3 +191,8 @@ o n8n aceita o envio abaixo (hoje, `validarEtapa1` exige `caixas` e `validarEtap
 **17/10/2026, 15h32 (Operação) e gravação no site:** o n8n aceita caixas, sistema PDV e lojas vazios sem TEF e recusa `c6pay` sem `tef`
 (`422` `produtos` `c6pay_sem_tef`, aviso `docs/aviso_site_regras_tef_1710.md`). Os testes do site passam com a `lib/` publicada (901606e),
 inclusive os envios sem TEF. O site mostra uma mensagem para `c6pay_sem_tef` nas duas etapas. Versão gravada na `main`; a chave segue desligada.
+
+**17/10/2026, noite:** a etapa 2 do n8n passou a trazer `interesse_adicional: ["pdvet"]` e `url_pdvet` quando a PDVet vem com outro produto
+(aviso `docs/aviso_teste_final_pdvet_rd_1710.md`, Formulario_Site_Proposta `dba42d66`). A tela final "Sua proposta foi enviada." usa esse
+`url_pdvet` no bloco "Você também marcou o Sistema PDV (PDVet)." (se não vier, usa o da etapa 1, quando houver). Gravado na `main`; a chave
+segue desligada. Falta o reteste do Rodrigo com link + PDVet em `?previa=1`.
