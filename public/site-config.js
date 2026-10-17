@@ -3,7 +3,7 @@
           dispara no clique do botão.
    true:  os botões levam a /proposta.html (formulário em 2 etapas) e a conversão dispara no envio com sucesso da etapa 1.
    Só ligar depois de os webhooks site-proposta-etapa1/2 estarem publicados e do teste de ponta a ponta. */
-window.ANTERE_FORM_NOVO = false;  /* desligada em 17/10/2026: etapa 2 respondeu "pedido não encontrado" no teste do Rodrigo (link + PDVet) */
+window.ANTERE_FORM_NOVO = true;  /* religada em 17/10/2026, depois do teste final do Rodrigo (proposta no modelo novo) */
 
 /* Chave do aviso de cookies (LGPD), README, seção "Aviso de cookies".
    false: a tag do Google Ads carrega em toda visita, como antes, e não aparece aviso.

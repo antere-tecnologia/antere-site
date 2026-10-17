@@ -196,3 +196,6 @@ inclusive os envios sem TEF. O site mostra uma mensagem para `c6pay_sem_tef` nas
 (aviso `docs/aviso_teste_final_pdvet_rd_1710.md`, Formulario_Site_Proposta `dba42d66`). A tela final "Sua proposta foi enviada." usa esse
 `url_pdvet` no bloco "Você também marcou o Sistema PDV (PDVet)." (se não vier, usa o da etapa 1, quando houver). Gravado na `main`; a chave
 segue desligada. Falta o reteste do Rodrigo com link + PDVet em `?previa=1`.
+
+**17/10/2026, noite: chave religada** (`window.ANTERE_FORM_NOVO = true`), depois do teste final do Rodrigo (o e-mail chegou com a proposta no
+modelo novo). Os botões voltam a levar a `/proposta.html` e a conversão do Google Ads volta a disparar no envio da etapa 1.
