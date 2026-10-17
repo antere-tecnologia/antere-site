@@ -93,3 +93,8 @@ lote com `lead_id` e `token`.
     a isenção com a conta PJ.
   - Depois de publicado, avisar a sessão Site: ela troca `CONTA_PJ_ENVIO` para `""` em `_src/componentes.py` e o campo deixa de ir.
     O teste "formulário C6 Pay" muda junto.
+
+**17/10/2026, depois:** a Operação tirou o campo do contrato e da `validarEtapa2` (commit 58cb38f, branch `claude/clever-faraday-76ga3f`,
+"pronto no repositório, a publicar"). O site deixou de mandar `conta_pj_c6` (`CONTA_PJ_ENVIO = ""`). O corpo da etapa 2 do site passa na
+`validarEtapa2` desse commit e não passa na versão da `main` (d9ee493), que ainda exige o campo. **O teste de ponta a ponta depende da
+publicação desse patch no n8n.**

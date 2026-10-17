@@ -183,8 +183,9 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     assert.ok(!/me ligue/i.test(await p.textContent('main')));
     await p.click('#b2'); await p.waitForSelector('#pf-fim:not([hidden])');
     const c2 = reqs[1].corpo;
-    assert.deepStrictEqual(c2, { lead_id: 'a'.repeat(24), pedido_token: 'b'.repeat(32), razao_social: 'EMPRESA EXEMPLO LTDA', sistema_pdv: 'PDVet', lojas: 2, produtos: ['tef', 'link'], website: '', conta_pj_c6: 'nao', faixa_link: '201_600', vendas_cartao: '8_30mil', recebimento: 'd1' });
-    if (lib) assert.ok(lib.validarEtapa2(c2, { lead_id: c2.lead_id, pedido_token: c2.pedido_token, procura: 'c6pay' }).ok);
+    assert.deepStrictEqual(c2, { lead_id: 'a'.repeat(24), pedido_token: 'b'.repeat(32), razao_social: 'EMPRESA EXEMPLO LTDA', sistema_pdv: 'PDVet', lojas: 2, produtos: ['tef', 'link'], website: '', faixa_link: '201_600', vendas_cartao: '8_30mil', recebimento: 'd1' });
+    assert.ok(!('conta_pj_c6' in c2), 'conta_pj_c6 saiu do contrato em 17/10');
+    if (lib && !/conta_pj_c6: conta|conta_pj_c6', erro/.test(fs.readFileSync(require.resolve(path.join(__dirname, '..', '..', 'antere-automacao', 'n8n', 'lib', 'formulario_site.js')), 'utf8'))) assert.ok(lib.validarEtapa2(c2, { lead_id: c2.lead_id, pedido_token: c2.pedido_token, procura: 'c6pay' }).ok);
     assert.strictEqual(await p.textContent('#pf-fim h1'), 'Sua proposta foi enviada.');
     assert.strictEqual(await p.textContent('#v-email'), 'maria@empresa.com.br');
     assert.match(await p.textContent('#t-fim'), /Spam e Promoções/);
@@ -201,7 +202,7 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     await p.fill('#f-sistema', 'Nenhum'); await p.fill('#f-lojas', '1'); await p.check('input[name=produtos][value=link]'); await p.selectOption('#f-faixa', 'acima_10000');
     await p.click('#b2'); assert.strictEqual(await p.textContent('#e-razao_social'), 'Informe a razão social.'); assert.strictEqual(reqs.length, 1);
     await p.fill('#f-razao', 'Minha Empresa Ltda'); await p.click('#b2'); await p.waitForSelector('#pf-fim:not([hidden])');
-    assert.strictEqual(reqs[1].corpo.razao_social, 'Minha Empresa Ltda'); assert.ok(!('vendas_cartao' in reqs[1].corpo)); assert.ok(await p.isVisible('#t-escalonar'));
+    assert.strictEqual(reqs[1].corpo.razao_social, 'Minha Empresa Ltda'); assert.ok(!('conta_pj_c6' in reqs[1].corpo)); assert.ok(!('vendas_cartao' in reqs[1].corpo)); assert.ok(await p.isVisible('#t-escalonar'));
     await ctx.close();
     const x = await contexto(b, { webhooks: etapa1Ok(EMP, 'c6pay') }); const p2 = await x.ctx.newPage();
     await p2.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p2, 'c6pay'); await p2.click('#b1'); await p2.waitForSelector('#pf-e2:not([hidden])');

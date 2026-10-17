@@ -36,7 +36,7 @@ Aprovado pelo Rodrigo para o formulário novo (proposta da Operação: `antere-a
 
 - **Tema escuro em tudo:** etapa 1, etapa 2, tela da PDVet, tela final, erros, "Você quis dizer…?" e carregando. Inclui os controles nativos (`color-scheme: dark`: opções, caixas, a lista de faixas e as setas dos números), o preenchimento automático do navegador e os links e botões de contorno em roxo claro (`--indigo-ink`). O teste "tema escuro em todas as telas e estados" confere fundo, contraste ≥ 4,5 e controles, com o aparelho em modo claro e em modo escuro.
 - **Bloco da empresa:** "✓ Dados corretos" (preenchido) e "Corrigir" (contorno), pequenos (36 px), lado a lado, sem quebrar linha.
-- **Conta PJ C6:** a pergunta saiu da etapa 2. Enquanto o contrato do n8n exigir `conta_pj_c6`, o site manda `"nao"` (`CONTA_PJ_ENVIO` em `_src/componentes.py`). Quando a Operação tirar a exigência, trocar para `""` (o campo deixa de ir) e ajustar o teste. Combinado em `propostas/formulario_email_operacao_1610.md`.
+- **Conta PJ C6:** a pergunta saiu da etapa 2 e, desde 17/10, o campo `conta_pj_c6` também deixou de ir no envio (`CONTA_PJ_ENVIO = ""` em `_src/componentes.py`), porque saiu do contrato (Operação, commit 58cb38f do `antere-automacao`). Atenção: o teste de ponta a ponta só passa na etapa 2 depois de a Operação publicar no n8n a `validarEtapa2` sem o campo; com a versão antiga, a etapa 2 volta `422` `conta_pj_c6`.
 
 ## WhatsApp (15/10/2026)
 

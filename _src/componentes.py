@@ -14,9 +14,9 @@ WEBHOOK_DADOS = "https://raregoat-n8n.cloudfy.live/webhook/form-proposta-dados"
 DOMINIOS_COMUNS = ["gmail.com", "hotmail.com", "outlook.com", "live.com", "yahoo.com", "yahoo.com.br", "icloud.com", "uol.com.br", "bol.com.br", "terra.com.br"]
 FORM_ANTIGO = "https://raregoat-n8n.cloudfy.live/form/proposta?ref=site_institucional"
 URL_PDVET = "https://portal.pdvet.com.br/cadastro"
-# 17/10/2026 (Rodrigo): a pergunta da conta PJ C6 saiu da etapa 2. Enquanto o contrato do n8n exigir o campo conta_pj_c6, o site manda
-# "nao" (sem prometer a isenção da implantação). Quando a Operação tirar a exigência do contrato, trocar para "" e o campo deixa de ir.
-CONTA_PJ_ENVIO = "nao"
+# 17/10/2026 (Rodrigo): a pergunta da conta PJ C6 saiu da etapa 2 e o campo conta_pj_c6 saiu do contrato (Operação, 17/10): vazio = o
+# campo não vai. Se um dia o contrato voltar a exigir, pôr o valor aqui ("nao" não promete a isenção).
+CONTA_PJ_ENVIO = ""
 ADS_SEND_TO = "AW-18479570694/4-TPCPzV6ZcdEIa-3-tE"
 
 # ---- AS CHAVES -------------------------------------------------------------------------------------------------------
