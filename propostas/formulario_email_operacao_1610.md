@@ -147,3 +147,6 @@ O site, no branch `claude/kind-galileo-2wjuc2` (fora da `main`), segue o contrat
 Diferenças em relação ao pedido original das telas (a decidir pelo Rodrigo): o **nº de caixas ficou na etapa 1** e **sistema PDV e lojas aparecem
 para todos os produtos**, porque o contrato publicado exige assim. Os corpos passam na `validarEtapa1`/`validarEtapa2` de 258d546.
 Depois de ir para a `main`, avisar a Operação para tirar o `procura` do contrato.
+
+**17/10/2026: telas aprovadas pelo Rodrigo; versão gravada na `main` do site.** O site não manda mais `procura`. **Pedido à Operação:** tirar o
+`procura` do contrato e da validação (o pedido antigo, que já começou com `procura`, só termina no formato antigo).

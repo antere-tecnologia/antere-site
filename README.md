@@ -39,9 +39,9 @@ Aprovado pelo Rodrigo para o formulário novo (proposta da Operação: `antere-a
 - **Bloco da empresa:** "✓ Dados corretos" (preenchido) e "Corrigir" (contorno), pequenos (36 px), lado a lado, sem quebrar linha.
 - **Conta PJ C6:** a pergunta saiu da etapa 2 e, desde 17/10, o campo `conta_pj_c6` também deixou de ir no envio (`CONTA_PJ_ENVIO = ""` em `_src/componentes.py`), porque saiu do contrato (Operação, commit 58cb38f do `antere-automacao`). A Operação publicou no n8n a versão que aceita a etapa 2 sem o campo (Formulario_Site_Proposta 03852d6f, merge em c349255), e o teste de ponta a ponta passou.
 
-### Formulário: produtos na etapa 1 (17/10/2026, em preparação)
+### Formulário: produtos na etapa 1 (17/10/2026)
 
-"O que você procura?" vira múltipla escolha com 4 opções (TEF, C6 Pay, link, PDVet; pelo menos uma). Só PDVet vai ao cadastro da PDVet; PDVet com outro produto segue para a etapa 2, que mostra só os campos dos produtos escolhidos (TEF: sistema PDV, lojas e caixas; C6 Pay: vendas no cartão e prazo de recebimento; link: volume de transações). Contrato publicado pela Operação em 17/10, 10h50; o site segue o contrato publicado (nº de caixas na etapa 1; sistema PDV e lojas na etapa 2 para todos os produtos; com PDVet junto, a tela final oferece o portal da PDVet). Pronto no branch `claude/kind-galileo-2wjuc2`; vai para a `main` depois da validação das telas pelo Rodrigo.
+"O que você procura?" vira múltipla escolha com 4 opções (TEF, C6 Pay, link, PDVet; pelo menos uma). Só PDVet vai ao cadastro da PDVet; PDVet com outro produto segue para a etapa 2, que mostra só os campos dos produtos escolhidos (TEF: sistema PDV, lojas e caixas; C6 Pay: vendas no cartão e prazo de recebimento; link: volume de transações). Contrato publicado pela Operação em 17/10, 10h50; o site segue o contrato publicado (nº de caixas na etapa 1; sistema PDV e lojas na etapa 2 para todos os produtos; com PDVet junto, a tela final oferece o portal da PDVet). Telas aprovadas pelo Rodrigo e no ar desde 17/10/2026 (a chave do formulário está ligada).
 
 ## WhatsApp (15/10/2026)
 
