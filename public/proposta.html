@@ -126,6 +126,7 @@ footer a:hover{text-decoration:underline}
 .pf .opcao input{width:20px;height:20px;margin:.15rem 0 0;flex:none;accent-color:var(--indigo)}
 .pf .opcao:has(input:checked){border-color:var(--indigo);background:var(--indigo-tint)}
 .pf .consent{font-weight:400;font-size:.95rem;color:var(--ink-2)}
+.pf .optin{margin-top:.55rem}
 .pf .erro{color:#C0392B;font-size:.92rem;font-weight:600;margin:0}
 .pf .erro:empty{display:none}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .pf .erro{color:#FF8A7A}}
@@ -175,7 +176,8 @@ footer a:hover{text-decoration:underline}
   <p class="pf-destaque">C6 Pay: crédito a partir de 1,84% recebendo em 31 dias, débito a partir de 0,82% e Pix grátis e ilimitado.</p>
   <form id="f1" novalidate>
     <div class="campo"><label for="f-nome">Nome completo</label><input id="f-nome" name="nome" type="text" autocomplete="name" maxlength="80" required><p class="erro" id="e-nome"></p></div>
-    <div class="campo"><label for="f-whatsapp">WhatsApp</label><input id="f-whatsapp" name="whatsapp" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="(11) 91234-5678" maxlength="16" required><p class="erro" id="e-whatsapp"></p></div>
+    <div class="campo"><label for="f-whatsapp">WhatsApp</label><input id="f-whatsapp" name="whatsapp" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="(11) 91234-5678" maxlength="16" required><p class="erro" id="e-whatsapp"></p>
+      <label class="opcao consent optin"><input type="checkbox" id="f-optin" name="optin_whatsapp"> <span id="t-optin">Quero receber a proposta e o acompanhamento da Antere pelo WhatsApp</span></label></div>
     <div class="campo"><label for="f-email">E-mail</label><input id="f-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="120" required><span class="dica">A proposta chega neste e-mail.</span><p class="erro" id="e-email"></p>
       <div class="sugestao" id="sug-email" role="status" aria-live="polite" hidden><span>Você quis dizer <strong id="sug-texto"></strong>?</span><div class="acoes"><button class="btn btn-primary" type="button" id="sug-sim">Sim, trocar</button><button class="btn btn-ghost" type="button" id="sug-nao">Não, está certo</button></div></div></div>
     <div class="campo"><label for="f-cnpj">CNPJ</label><input id="f-cnpj" name="cnpj" type="text" inputmode="numeric" autocomplete="off" placeholder="00.000.000/0000-00" maxlength="18" required><p class="erro" id="e-cnpj"></p></div>
@@ -424,7 +426,7 @@ var cad=null;
 // ---------- etapa 1
 var f1=$('f1'),b1=$('b1'),s1=$('s1');
 f1.addEventListener('submit',function(e){e.preventDefault();limpaErros(f1);s1.textContent='';
- var c={nome:f1.nome.value.trim(),whatsapp:f1.whatsapp.value.trim(),email:f1.email.value.trim(),cnpj:dig(f1.cnpj.value),caixas:f1.caixas.value.trim(),produtos:marcados(f1,'produtos'),consentimento_lgpd:$('f-lgpd').checked,website:f1.website.value};
+ var c={nome:f1.nome.value.trim(),whatsapp:f1.whatsapp.value.trim(),email:f1.email.value.trim(),cnpj:dig(f1.cnpj.value),caixas:f1.caixas.value.trim(),produtos:marcados(f1,'produtos'),consentimento_lgpd:$('f-lgpd').checked,optin_whatsapp:$('f-optin').checked,optin_whatsapp_texto:$('t-optin').textContent,website:f1.website.value};
  var er=[];
  if(c.nome.length<2||!/[A-Za-zÀ-ÿ]/.test(c.nome))er.push({campo:'nome',erro:c.nome?'invalido':'obrigatorio'});
  if(!zapOk(c.whatsapp))er.push({campo:'whatsapp',erro:c.whatsapp?'invalido':'obrigatorio'});

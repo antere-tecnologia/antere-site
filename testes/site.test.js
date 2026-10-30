@@ -212,6 +212,31 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     await ctx.close();
   });
 
+  await t('formulário: caixa de opt-in do WhatsApp (30/10, pedido da Operação): opcional, desmarcada, separada da LGPD, junto do WhatsApp; vai optin_whatsapp e o texto na etapa 1, nada na etapa 2', async () => {
+    const TXT = 'Quero receber a proposta e o acompanhamento da Antere pelo WhatsApp';
+    for (const marcar of [false, true]) {
+      const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP), viewport: { width: 390, height: 844 } }); const p = await ctx.newPage();
+      await p.goto(BASE + '/proposta.html?previa=1');
+      assert.strictEqual((await p.textContent('label:has(#f-optin)')).trim(), TXT);
+      assert.strictEqual(await p.isChecked('#f-optin'), false, 'começa desmarcada');
+      assert.strictEqual(await p.getAttribute('#f-optin', 'required'), null, 'não é obrigatória');
+      assert.ok(await p.evaluate(() => document.getElementById('f-optin').closest('.campo').contains(document.getElementById('f-whatsapp'))), 'fica junto do campo de WhatsApp');
+      assert.ok(await p.evaluate(() => document.getElementById('f-optin').closest('.campo') !== document.getElementById('f-lgpd').closest('.campo')), 'separada da LGPD');
+      assert.ok(!/obrigat/i.test(await p.evaluate(() => document.getElementById('f-optin').closest('.campo').textContent)));
+      assert.match(await p.textContent('label:has(#f-lgpd)'), /^\s*Concordo com o uso dos meus dados para elaboração da proposta, conforme a LGPD e a Política de Privacidade\.\s*$/, 'texto da LGPD mantido');
+      await preencheE1(p, ['tef']); if (marcar) await p.check('#f-optin');
+      await p.uncheck('#f-lgpd'); await p.click('#b1');
+      assert.strictEqual(reqs.length, 0, 'a LGPD continua obrigatória, com ou sem o opt-in'); assert.ok((await p.textContent('#e-consentimento_lgpd')).length > 0);
+      assert.strictEqual(await p.textContent('#e-whatsapp'), '');
+      await p.check('#f-lgpd'); await p.click('#b1'); await p.waitForSelector('#pf-e2:not([hidden])');
+      const c1 = reqs[0].corpo;
+      assert.strictEqual(c1.optin_whatsapp, marcar); assert.strictEqual(c1.optin_whatsapp_texto, TXT); assert.strictEqual(c1.consentimento_lgpd, true);
+      if (confereLib(c1)) { const v = lib.validarEtapa1(c1); assert.ok(v.ok, JSON.stringify(v)); if ('optin_whatsapp' in v.dados) assert.strictEqual(v.dados.optin_whatsapp, marcar ? 'sim' : '', 'regra optinDoLead da Operação'); }
+      await p.fill('#f-sistema', 'Linx'); await p.fill('#f-lojas', '1'); await p.click('#b2'); await p.waitForSelector('#pf-fim:not([hidden])');
+      assert.ok(!Object.keys(reqs[1].corpo).some(k => /optin/.test(k)), 'nada muda na etapa 2');
+      await ctx.close();
+    }
+  });
   await t('formulário: pelo menos um produto; só PDVet vai ao cadastro da PDVet; PDVet com outro produto vai à etapa 2; a etapa 2 mostra só os campos de cada produto', async () => {
     const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP) }); const p = await ctx.newPage();
     await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, []); await p.click('#b1');

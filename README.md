@@ -47,6 +47,10 @@ Aprovado pelo Rodrigo para o formulário novo (proposta da Operação: `antere-a
 
 Marcar C6 Pay marca também o TEF ("O C6 Pay é oferecido junto com o TEF integrado ao caixa."); desmarcar o TEF desmarca o C6 Pay. "Nº de caixas" (etapa 1), "Sistema PDV" e "Nº de lojas" (etapa 2) só aparecem, só são obrigatórios e só são enviados com TEF. O n8n aceita desde 17/10, 15h32 (`antere-automacao/docs/aviso_site_regras_tef_1710.md`) e recusa C6 Pay sem TEF com o erro `c6pay_sem_tef`; a tela mostra "O C6 Pay é oferecido junto com o TEF integrado ao caixa. Marque também \"TEF integrado ao caixa\"." (na etapa 2, com "Volte à etapa 1 para ajustar."). Na `main` desde 17/10/2026; a chave do formulário continua desligada.
 
+### Formulário: opt-in do WhatsApp na etapa 1 (30/10/2026, pedido da Operação)
+
+Pedido em `docs/pedido_site_optin_3010.md` (repositório `antere-automacao`), aprovado pelo Rodrigo em 30/10. Logo abaixo do campo de WhatsApp, a caixa "Quero receber a proposta e o acompanhamento da Antere pelo WhatsApp": opcional, desmarcada, sem `required`, separada da caixa da LGPD (que continua obrigatória e com o mesmo texto). No envio da etapa 1 vão `optin_whatsapp` (`true`/`false`) e `optin_whatsapp_texto` (o texto da caixa, lido da própria tela, `#t-optin`). A etapa 2 não muda. Até a Operação publicar a parte dela (02/11/2026, 20h), o webhook ignora os dois campos, sem erro.
+
 ## WhatsApp (15/10/2026)
 
 Botão flutuante "Fale com a gente" no canto inferior direito de todas as páginas, inclusive as de `legal/`, menos no formulário. Leva ao número do atendimento com IA (`WHATSAPP_NUMERO` em `_src/componentes.py`, hoje 5511955032670) com a mensagem "Olá! Vim pelo site da Antere e quero saber mais sobre as soluções." e, quando a visita veio com UTM, a linha "Origem: fonte / meio / campanha". O botão some quando estaria por cima de um botão de proposta (celular). O clique em qualquer link do WhatsApp vira o evento `whatsapp_click` do Google Ads, sem conversão.
