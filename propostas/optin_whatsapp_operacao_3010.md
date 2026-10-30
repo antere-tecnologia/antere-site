@@ -12,7 +12,8 @@ Pedido: `docs/pedido_site_optin_3010.md` no `antere-automacao` (branch `claude/a
 
 ## Envios de teste (segunda, 02/11/2026, depois das 20h em Brasília, quando a Operação publicar)
 
-Feitos pela sessão Site, pelo formulário no ar (`/proposta.html`), só a etapa 1:
+**30/10: os testes ficaram com o Rodrigo**, que os faz pelo celular às 20h15 de 02/11, pelo formulário no ar (`/proposta.html`).
+A sessão Site não faz esses envios (o lembrete dela foi cancelado). Dados combinados:
 
 | | nome | e-mail | caixa |
 |---|---|---|---|
@@ -20,7 +21,7 @@ Feitos pela sessão Site, pelo formulário no ar (`/proposta.html`), só a etapa
 | 2 | ZZ TESTE Optin Nao | delivered@resend.dev | desmarcada |
 
 Pedidos à Operação:
-1. Avisar quando a parte dela estiver publicada (o envio só sai depois disso).
+1. Avisar o Rodrigo quando a parte dela estiver publicada (o envio só sai depois disso).
 2. Garantir que nenhum WhatsApp da cadência saia para essas duas linhas (nome começando com "ZZ TESTE").
 3. Conferir as duas linhas da base (`optin_whatsapp` = `sim` na 1 e vazio na 2, data em Brasília, texto, origem `formulario_site`) e o card.
 4. Depois da conferência, **remover as duas linhas de teste da base e os dois cards no RD** e avisar.
