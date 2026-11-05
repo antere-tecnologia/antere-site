@@ -609,6 +609,14 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     assert.strictEqual(new URL(await p.getAttribute('#pf-fim a[data-wa]', 'href')).origin, 'https://wa.me');
     await ctx.close();
   });
+  await t('rodapé (05/11): "Política de Privacidade" e "Termos de uso" nas 7 páginas, no formulário e no 404, para legal.antere.com.br; frase da LGPD com o link da política', async () => {
+    for (const pg of [...PAGINAS, 'proposta.html']) {
+      const s = fs.readFileSync(path.join(PUB, pg), 'utf8'), rod = s.slice(s.indexOf('<footer'));
+      assert.ok(rod.includes('<a href="https://legal.antere.com.br/privacidade.html">Política de Privacidade</a>\n    <a href="https://legal.antere.com.br/termos.html">Termos de uso</a>'), pg);
+      assert.ok(rod.includes('<div class="legal">Antere Tecnologia (F. de Carvalho Spahn Consultoria em Tecnologia da Informação LTDA). Tratamos seus dados conforme a LGPD e a nossa <a href="https://legal.antere.com.br/privacidade.html">Política de Privacidade</a>.</div>'), pg);
+      assert.ok(!/exclusivamente para elaborar/.test(s), pg);
+    }
+  });
   await t('Sobre: "Quem acompanha você" / Equipe comercial Antere; nenhum "Fernanda" em public/ nem no gerador', async () => {
     const h = fs.readFileSync(path.join(PUB, 'sobre.html'), 'utf8');
     assert.ok(h.includes('<span class="eyebrow">Quem acompanha você</span><h3>Equipe comercial Antere</h3><p>Assina as propostas e acompanha cada cliente, da proposta até a ativação.</p>'));

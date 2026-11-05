@@ -95,6 +95,7 @@ footer .slogan img{display:block;height:auto;width:min(100%,360px)}
 footer .cols{display:flex;flex-wrap:wrap;gap:1.5rem 2.5rem}
 footer a{color:var(--ink-2);text-decoration:none}
 footer a:hover{text-decoration:underline}
+footer .legal a{text-decoration:underline}
 .note{display:flex;gap:.6rem;align-items:flex-start;background:var(--ambar-tint);border-left:4px solid var(--ambar);border-radius:8px;padding:.85rem 1rem;color:var(--ink);font-size:.95rem}
 .note b{font-family:var(--font-display);font-weight:600}
 .skeleton{border:2px dashed var(--line);border-radius:var(--radius);padding:1.5rem;color:var(--ink-3);display:grid;gap:.6rem}
@@ -151,8 +152,10 @@ f.addEventListener('submit',function(e){
     <a href="solucoes.html">Soluções</a>
     <a href="sobre.html">Sobre</a>
     <a href="contato.html">Contato</a>
+    <a href="https://legal.antere.com.br/privacidade.html">Política de Privacidade</a>
+    <a href="https://legal.antere.com.br/termos.html">Termos de uso</a>
   </div>
-  <div>Antere Tecnologia (F. de Carvalho Spahn Consultoria em Tecnologia da Informação LTDA). Seus dados são usados exclusivamente para elaborar sua proposta comercial, conforme a LGPD.</div>
+  <div class="legal">Antere Tecnologia (F. de Carvalho Spahn Consultoria em Tecnologia da Informação LTDA). Tratamos seus dados conforme a LGPD e a nossa <a href="https://legal.antere.com.br/privacidade.html">Política de Privacidade</a>.</div>
 </div></footer>
 <script>
 (function(){var b=document.getElementById('menu-toggle'),m=document.getElementById('menu');if(!b)return;b.addEventListener('click',function(){var o=m.classList.toggle('open');b.setAttribute('aria-expanded',o?'true':'false');});})();
