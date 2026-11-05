@@ -617,6 +617,14 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
       assert.ok(!/exclusivamente para elaborar/.test(s), pg);
     }
   });
+  await t('política (05/11): seção 5 com Chatwoot, Brevo/Emailable, Slack, Anthropic e Netlify; PayGo, C6 Bank e PDVet no parágrafo dos parceiros; data do dia da publicação (04/11)', async () => {
+    const pol = fs.readFileSync(path.join(PUB, 'legal', 'privacidade.html'), 'utf8'), s5 = pol.slice(pol.indexOf('<h2>5.'), pol.indexOf('<h2>6.'));
+    const itens = [...s5.matchAll(/<li><strong>([^<]+)<\/strong>/g)].map(m => m[1]);
+    assert.deepStrictEqual(itens, ['RD Station', 'Google (Google Sheets)', 'Meta (WhatsApp Business Platform)', 'Google (Google Ads)', 'Google (Gemini)', 'Resend', 'Chatwoot', 'Brevo e Emailable', 'Slack', 'Anthropic (Claude)', 'Netlify', 'Provedor de hospedagem (Cloudfy)']);
+    for (const x of ['Chatwoot</strong> — plataforma de atendimento onde a nossa equipe conversa com você por WhatsApp e e-mail.', 'Brevo e Emailable</strong> — envio de e-mails de campanhas comerciais e verificação de endereços de e-mail.', 'Slack</strong> — avisos internos para a nossa equipe sobre o andamento do seu atendimento.', 'Anthropic (Claude)</strong> — assistentes de inteligência artificial usados pela nossa equipe na operação interna, como a organização de relatórios e o apoio ao atendimento.', 'Netlify</strong> — hospedagem do nosso site e dos formulários.', '<p>Quando você contrata um serviço de parceiros que atendemos, como a PayGo, o C6 Bank ou o PDVet, seus dados são compartilhados com eles para o cadastro, a ativação, a cobrança e a continuidade do serviço contratado.</p>']) assert.ok(s5.includes(x), x);
+    // a data é a do dia em que a política foi publicada em legal.antere.com.br, depois da troca do DNS (04/11/2026, Brasília)
+    assert.match(pol, /Última atualização: 4 de novembro de 2026 —/); assert.ok(!pol.includes('__DATA_PUBLICACAO__'));
+  });
   await t('Sobre: "Quem acompanha você" / Equipe comercial Antere; nenhum "Fernanda" em public/ nem no gerador', async () => {
     const h = fs.readFileSync(path.join(PUB, 'sobre.html'), 'utf8');
     assert.ok(h.includes('<span class="eyebrow">Quem acompanha você</span><h3>Equipe comercial Antere</h3><p>Assina as propostas e acompanha cada cliente, da proposta até a ativação.</p>'));
