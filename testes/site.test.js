@@ -609,6 +609,16 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     assert.strictEqual(new URL(await p.getAttribute('#pf-fim a[data-wa]', 'href')).origin, 'https://wa.me');
     await ctx.close();
   });
+  await t('rodapé (05/11): "Política de Privacidade" e "Termos de uso" nas 7 páginas, no formulário e no 404, para legal.antere.com.br; seção 5 da política com Chatwoot, Brevo/Emailable, PayGo/C6 Bank e Slack', async () => {
+    for (const pg of [...PAGINAS, 'proposta.html']) {
+      const s = fs.readFileSync(path.join(PUB, pg), 'utf8'), rod = s.slice(s.indexOf('<footer'));
+      assert.ok(rod.includes('<a href="https://legal.antere.com.br/privacidade.html">Política de Privacidade</a>'), pg);
+      assert.ok(rod.includes('<a href="https://legal.antere.com.br/termos.html">Termos de uso</a>'), pg);
+    }
+    const pol = fs.readFileSync(path.join(PUB, 'legal', 'privacidade.html'), 'utf8'), s5 = pol.slice(pol.indexOf('<h2>5.'), pol.indexOf('<h2>6.'));
+    for (const x of ['Chatwoot</strong> — plataforma de atendimento onde a nossa equipe conversa com você por WhatsApp e e-mail', 'Brevo e Emailable</strong> — envio de e-mails de campanhas comerciais e verificação de endereços de e-mail', 'PayGo e C6 Bank</strong> — cadastro, ativação e cobrança do serviço contratado', 'Slack</strong> — avisos internos para a nossa equipe sobre o andamento do seu atendimento', 'RD Station', 'Google (Google Ads)', 'Resend']) assert.ok(s5.includes(x), x);
+    assert.match(pol, /Última atualização: 5 de novembro de 2026/);
+  });
   await t('Sobre: "Quem acompanha você" / Equipe comercial Antere; nenhum "Fernanda" em public/ nem no gerador', async () => {
     const h = fs.readFileSync(path.join(PUB, 'sobre.html'), 'utf8');
     assert.ok(h.includes('<span class="eyebrow">Quem acompanha você</span><h3>Equipe comercial Antere</h3><p>Assina as propostas e acompanha cada cliente, da proposta até a ativação.</p>'));
