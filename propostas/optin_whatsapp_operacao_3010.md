@@ -25,3 +25,12 @@ Pedidos à Operação:
 2. Garantir que nenhum WhatsApp da cadência saia para essas duas linhas (nome começando com "ZZ TESTE").
 3. Conferir as duas linhas da base (`optin_whatsapp` = `sim` na 1 e vazio na 2, data em Brasília, texto, origem `formulario_site`) e o card.
 4. Depois da conferência, **remover as duas linhas de teste da base e os dois cards no RD** e avisar.
+
+## 05/11/2026: envios de teste feitos
+
+- O Rodrigo enviou os dois pelo formulário no ar às 8h25 (Brasília): "ZZ TESTE Optin Sim" (caixa marcada,
+  `delivered+zz0511sim@resend.dev`) e "ZZ TESTE Optin Nao" (desmarcada, `delivered+zz0511nao@resend.dev`).
+- Sessão Site (só leitura no n8n): o `Formulario_Site_Proposta` (`givRcybqzR0AQ3lH`) está ativo com a versão publicada às 8h10
+  (11h10 UTC), já com a regra do opt-in no nó `02 Conferir a etapa 1` e com `optin_whatsapp` e `optin_whatsapp_origem` repassados
+  ao nó `10 Criar lead e negociação (RD)`. O fluxo não salva execuções, então os dois envios não aparecem no histórico do n8n.
+- Falta a Operação: conferir as duas linhas da base e os cards, avisar o resultado e depois remover as linhas e os cards no RD.
