@@ -3,3 +3,7 @@
 [build]
   publish = "public"
   command = ""
+  # 10/11/2026: plano Free com 300 créditos/mês (15 por deploy de produção). Não publica quando nada em public/ mudou
+  # desde o último deploy (git diff sem diferença = sai 0 = deploy cancelado, sem gastar crédito). Sem o commit anterior
+  # (primeiro deploy, cache limpo), o git diff falha e o deploy segue normalmente.
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- public/"

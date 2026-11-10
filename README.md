@@ -51,6 +51,10 @@ Marcar C6 Pay marca também o TEF ("O C6 Pay é oferecido junto com o TEF integr
 
 Pedido em `docs/pedido_site_optin_3010.md` (repositório `antere-automacao`), aprovado pelo Rodrigo em 30/10. Logo abaixo do campo de WhatsApp, a caixa "Quero receber a proposta e o acompanhamento da Antere pelo WhatsApp": opcional, desmarcada, sem `required`, separada da caixa da LGPD (que continua obrigatória e com o mesmo texto). No envio da etapa 1 vão `optin_whatsapp` (`true`/`false`) e `optin_whatsapp_texto` (o texto da caixa, lido da própria tela, `#t-optin`). A etapa 2 não muda. Até a Operação publicar a parte dela (02/11/2026, 20h), o webhook ignora os dois campos, sem erro.
 
+## Netlify sem créditos e migração para o Cloudflare Pages (10/11/2026)
+
+O plano Free do Netlify tem 300 créditos por mês e cada deploy de produção custa 15 (no máximo 20 por mês). O ciclo de outubro/novembro estourou e só renova em 16/11. Regras: juntar as mudanças e publicar na `main` no máximo uma vez por semana, salvo urgência; o `netlify.toml` tem a regra `ignore`, que não publica quando nada em `public/` mudou. Decisão de 10/11: o site e legal.antere.com.br vão para o Cloudflare Pages até 01/12, com o DNS na GoDaddy. O plano está em `propostas/migracao_cloudflare_pages.md`, e o script que monta a saída de cada projeto do Pages está em `cloudflare/montar.sh`.
+
 ## Marca e CNPJ no rodapé (10/11/2026, pedido da Meta)
 
 A Meta reprovou o nome de exibição "Antere" no WhatsApp porque a razão social não tem "Antere". O rodapé das 8 páginas (7 do site e o formulário) e das 3 de `legal/` diz "Antere é uma marca de F de Carvalho Spahn Consultoria em Tecnologia da Informação Ltda — CNPJ …". O CNPJ não é digitado à mão: foi lido de `antere-automacao/docs/campanha_pdvet.md` (rodapé oficial dos e-mails), com os dígitos verificadores conferidos, e o teste "marca" relê o mesmo documento e confere os dígitos. No gerador, a frase está em `build_site.py` (FOOTER). A razão social é escrita como no cartão do CNPJ e na verificação da Meta, "F de Carvalho Spahn Consultoria em Tecnologia da Informação Ltda" (sem ponto depois do F), em todo o site e nas páginas legais, inclusive no topo delas.
