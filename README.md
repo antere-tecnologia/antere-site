@@ -51,6 +51,10 @@ Marcar C6 Pay marca também o TEF ("O C6 Pay é oferecido junto com o TEF integr
 
 Pedido em `docs/pedido_site_optin_3010.md` (repositório `antere-automacao`), aprovado pelo Rodrigo em 30/10. Logo abaixo do campo de WhatsApp, a caixa "Quero receber a proposta e o acompanhamento da Antere pelo WhatsApp": opcional, desmarcada, sem `required`, separada da caixa da LGPD (que continua obrigatória e com o mesmo texto). No envio da etapa 1 vão `optin_whatsapp` (`true`/`false`) e `optin_whatsapp_texto` (o texto da caixa, lido da própria tela, `#t-optin`). A etapa 2 não muda. Até a Operação publicar a parte dela (02/11/2026, 20h), o webhook ignora os dois campos, sem erro.
 
+## Marca e CNPJ no rodapé (10/11/2026, pedido da Meta)
+
+A Meta reprovou o nome de exibição "Antere" no WhatsApp porque a razão social não tem "Antere". O rodapé das 8 páginas (7 do site e o formulário) e das 3 de `legal/` diz "Antere é uma marca de F de Carvalho Spahn Consultoria em Tecnologia da Informação Ltda — CNPJ …". O CNPJ não é digitado à mão: foi lido de `antere-automacao/docs/campanha_pdvet.md` (rodapé oficial dos e-mails), com os dígitos verificadores conferidos, e o teste "marca" relê o mesmo documento e confere os dígitos. No gerador, a frase está em `build_site.py` (FOOTER).
+
 ## WhatsApp (15/10/2026)
 
 Botão flutuante "Fale com a gente" no canto inferior direito de todas as páginas, inclusive as de `legal/`, menos no formulário. Leva ao número do atendimento com IA (`WHATSAPP_NUMERO` em `_src/componentes.py`, hoje 5511955032670) com a mensagem "Olá! Vim pelo site da Antere e quero saber mais sobre as soluções." e, quando a visita veio com UTM, a linha "Origem: fonte / meio / campanha". O botão some quando estaria por cima de um botão de proposta (celular). O clique em qualquer link do WhatsApp vira o evento `whatsapp_click` do Google Ads, sem conversão.
