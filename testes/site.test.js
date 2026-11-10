@@ -22,6 +22,11 @@ const UTM = '?utm_source=google&utm_medium=cpc&utm_campaign=pagamento_integrado'
 const PAGINAS = ['index.html', 'calculadora.html', 'como-funciona.html', 'contato.html', 'sobre.html', 'solucoes.html', '404.html'];
 const LEGAIS = ['legal/privacidade.html', 'legal/termos.html', 'legal/exclusao-dados.html'];
 const CNPJ = '11.222.333/0001-81';
+// 10/11/2026: frase da marca no rodapé (pedido da Meta para o nome de exibição "Antere"); CNPJ lido de antere-automacao/docs/campanha_pdvet.md
+const DOC_EMPRESA = path.join(__dirname, '..', '..', 'antere-automacao', 'docs', 'campanha_pdvet.md');
+const CNPJ_EMPRESA = (fs.existsSync(DOC_EMPRESA) ? fs.readFileSync(DOC_EMPRESA, 'utf8') : fs.readFileSync(path.join(SRC, 'build_site.py'), 'utf8'))
+  .match(/(?:F\. de Carvalho Spahn Consultoria em Tecnologia da Informação LTDA|Antere é uma marca de F de Carvalho Spahn Consultoria em Tecnologia da Informação Ltda) — CNPJ (\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/)[1];
+const MARCA = 'Antere é uma marca de F de Carvalho Spahn Consultoria em Tecnologia da Informação Ltda — CNPJ ' + CNPJ_EMPRESA + '.';
 let lib = null;
 try { lib = require(path.join(__dirname, '..', '..', 'antere-automacao', 'n8n', 'lib', 'formulario_site.js')); } catch (e) { lib = null; }
 // 17/10: os produtos passaram para a etapa 1 (contrato publicado pela Operação às 10h50). Só confere os corpos com a lib que já tiver o
@@ -613,7 +618,7 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     for (const pg of [...PAGINAS, 'proposta.html']) {
       const s = fs.readFileSync(path.join(PUB, pg), 'utf8'), rod = s.slice(s.indexOf('<footer'));
       assert.ok(rod.includes('<a href="https://legal.antere.com.br/privacidade.html">Política de Privacidade</a>\n    <a href="https://legal.antere.com.br/termos.html">Termos de uso</a>'), pg);
-      assert.ok(rod.includes('<div class="legal">Antere Tecnologia (F. de Carvalho Spahn Consultoria em Tecnologia da Informação LTDA). Tratamos seus dados conforme a LGPD e a nossa <a href="https://legal.antere.com.br/privacidade.html">Política de Privacidade</a>.</div>'), pg);
+      assert.ok(rod.includes('<div class="legal">' + MARCA + ' Tratamos seus dados conforme a LGPD e a nossa <a href="https://legal.antere.com.br/privacidade.html">Política de Privacidade</a>.</div>'), pg);
       assert.ok(!/exclusivamente para elaborar/.test(s), pg);
     }
   });
@@ -624,6 +629,21 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     for (const x of ['Chatwoot</strong> — plataforma de atendimento onde a nossa equipe conversa com você por WhatsApp e e-mail.', 'Brevo e Emailable</strong> — envio de e-mails de campanhas comerciais e verificação de endereços de e-mail.', 'Slack</strong> — avisos internos para a nossa equipe sobre o andamento do seu atendimento.', 'Anthropic (Claude)</strong> — assistentes de inteligência artificial usados pela nossa equipe na operação interna, como a organização de relatórios e o apoio ao atendimento.', 'Netlify</strong> — hospedagem do nosso site e dos formulários.', '<p>Quando você contrata um serviço de parceiros que atendemos, como a PayGo, o C6 Bank ou o PDVet, seus dados são compartilhados com eles para o cadastro, a ativação, a cobrança e a continuidade do serviço contratado.</p>']) assert.ok(s5.includes(x), x);
     // a data é a do dia em que a política foi publicada em legal.antere.com.br, depois da troca do DNS (04/11/2026, Brasília)
     assert.match(pol, /Última atualização: 4 de novembro de 2026 —/); assert.ok(!pol.includes('__DATA_PUBLICACAO__'));
+  });
+  await t('marca (10/11, Meta): "Antere é uma marca de … — CNPJ …" no rodapé das 8 páginas e das 3 legais; CNPJ válido e igual ao da documentação', async () => {
+    const cnpj = MARCA.match(/CNPJ (\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})\.$/)[1], d = cnpj.replace(/\D/g, '').split('').map(Number);
+    const dv = (n, p) => { const r = n.reduce((s, x, i) => s + x * p[i], 0) % 11; return r < 2 ? 0 : 11 - r; };
+    assert.strictEqual(dv(d.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]), d[12]); assert.strictEqual(dv(d.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]), d[13]);
+    if (!fs.existsSync(DOC_EMPRESA)) console.log('  (sem ../antere-automacao: CNPJ conferido só pelos dígitos)');
+    for (const pg of [...PAGINAS, 'proposta.html']) assert.ok(fs.readFileSync(path.join(PUB, pg), 'utf8').includes('<div class="legal">' + MARCA + ' '), pg);
+    assert.ok(fs.readFileSync(path.join(SRC, 'build_site.py'), 'utf8').includes(MARCA), 'gerador');
+    for (const pg of LEGAIS) { const s = fs.readFileSync(path.join(PUB, pg), 'utf8'); assert.ok(s.includes('<footer class="marca">' + MARCA + '</footer>'), pg); }
+    // grafia do cartão do CNPJ e da verificação da Meta (sem ponto depois do F, "Ltda") em todo o site e nas páginas legais
+    for (const pg of [...PAGINAS, 'proposta.html', ...LEGAIS]) { const s = fs.readFileSync(path.join(PUB, pg), 'utf8'); assert.ok(!/F\. de Carvalho|Informação LTDA/.test(s), pg); }
+    assert.ok(!/F\. de Carvalho|Informação LTDA/.test(fs.readFileSync(path.join(SRC, 'build_site.py'), 'utf8')), 'gerador');
+    const { ctx } = await contexto(b, { viewport: { width: 390, height: 844 } });
+    for (const pg of ['index.html', 'proposta.html', ...LEGAIS]) { const p = await ctx.newPage(); await p.goto(BASE + '/' + pg); assert.ok(await p.isVisible('text=' + MARCA), pg); await p.close(); }
+    await ctx.close();
   });
   await t('Sobre: "Quem acompanha você" / Equipe comercial Antere; nenhum "Fernanda" em public/ nem no gerador', async () => {
     const h = fs.readFileSync(path.join(PUB, 'sobre.html'), 'utf8');
