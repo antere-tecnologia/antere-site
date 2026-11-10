@@ -146,3 +146,15 @@ Proposta: **quinta-feira, 19/11/2026, às 21h (Brasília)**, com o clique do Rod
   (b). Faz a troca na GoDaddy de (c).
 - **Sessão Site:** acompanha, confere os testes (d) e ajusta o script ou as regras, se precisar.
 - **Operação:** CORS temporário (opcional), monitor de entregas e conferência do envio de teste.
+
+## Aprovado em 10/11 e próximos passos
+
+Aprovado pelo Rodrigo: 2 projetos (`antere-site` e `antere-legal`); raiz por encaminhamento 301 da GoDaddy (ou mantida no Netlify só
+redirecionando, se o 301 não funcionar com https); troca na quinta, 19/11, às 21h, reserva na terça, 24/11, às 21h. Os dois ajustes de
+10/11 vão ao ar pelo Cloudflare Pages; o Netlify não publica mais nada.
+
+- **16/11 (segunda), à noite:** parar os builds no Netlify (o site continua no ar com o último deploy) e criar os 2 projetos no Pages,
+  sem domínio personalizado, pelo passo a passo enviado na conversa.
+- **17/11 (terça):** teste (d) nos endereços `.pages.dev`; ajustes no `cloudflare/montar.sh`, se precisar.
+- **18/11 (quarta):** véspera: foto da zona DNS, valores atuais anotados, TTL de `www`, `legal` e `@` em 600 s.
+- **19/11 (quinta), 21h:** domínios personalizados no Pages e troca na GoDaddy, na ordem legal, www, raiz.
