@@ -645,6 +645,13 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     for (const pg of ['index.html', 'proposta.html', ...LEGAIS]) { const p = await ctx.newPage(); await p.goto(BASE + '/' + pg); assert.ok(await p.isVisible('text=' + MARCA), pg); await p.close(); }
     await ctx.close();
   });
+  await t('404 com o menu igual ao das outras páginas e sem item destacado; topo das 3 páginas legais com a razão social (10/11)', async () => {
+    const menu = (pg) => { const s = fs.readFileSync(path.join(PUB, pg), 'utf8'); return s.match(/<nav class="menu"[^>]*>(.*?)<\/nav>/)[1]; };
+    assert.strictEqual(menu('404.html'), menu('index.html').replace(' aria-current="page"', ''));
+    assert.ok(!menu('404.html').includes('aria-current'));
+    for (const pg of LEGAIS) assert.match(fs.readFileSync(path.join(PUB, pg), 'utf8'), /<div class="updated">Última atualização: [^<]+ — Antere \(F de Carvalho Spahn Consultoria em Tecnologia da Informação Ltda\)<\/div>/, pg);
+    assert.match(fs.readFileSync(path.join(PUB, 'legal', 'exclusao-dados.html'), 'utf8'), /Última atualização: 11 de setembro de 2026 — /);
+  });
   await t('Sobre: "Quem acompanha você" / Equipe comercial Antere; nenhum "Fernanda" em public/ nem no gerador', async () => {
     const h = fs.readFileSync(path.join(PUB, 'sobre.html'), 'utf8');
     assert.ok(h.includes('<span class="eyebrow">Quem acompanha você</span><h3>Equipe comercial Antere</h3><p>Assina as propostas e acompanha cada cliente, da proposta até a ativação.</p>'));
