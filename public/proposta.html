@@ -394,10 +394,16 @@ $('f1').addEventListener('change',function(e){if(e.target&&e.target.name==='prod
 $('f-whatsapp').addEventListener('input',function(){this.value=mZap(this.value)});
 function marcados(f,n){var r=[],cs=f.querySelectorAll('input[name="'+n+'"]:checked');for(var i=0;i<cs.length;i++)r.push(cs[i].value);return r}
 function radio(f,n){var r=f.querySelector('input[name="'+n+'"]:checked');return r?r.value:''}
-function envia(url,corpo){var c=window.AbortController?new AbortController():null,t=c?setTimeout(function(){c.abort()},30000):0;
+function envia(url,corpo){var c=window.AbortController?new AbortController():null,t=c?setTimeout(function(){c.abort()},ESPERA):0;
  return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(corpo),signal:c?c.signal:undefined})
   .then(function(r){clearTimeout(t);return r.json().catch(function(){return{}}).then(function(j){return{status:r.status,j:j||{}}})},function(e){clearTimeout(t);throw e})}
 var FALHA='Não foi possível enviar agora. Tente de novo em instantes ou fale com a gente no WhatsApp.';
+/* AUT-52 (12/11/2026): a tela espera até 60 s ("Estamos preparando sua proposta"). Sem resposta no prazo, sem rede no meio do envio ou
+   com erro do servidor, o pedido pode ter chegado: mostra "Recebemos seu pedido" e não deixa reenviar (evita lead em dobro).
+   "Não foi possível enviar" só quando é certo que nada saiu (sem internet antes de enviar). 422 e 429 seguem como antes. */
+var ESPERA=60000,PREPARANDO='Estamos preparando sua proposta…',SEM_REDE='Você está sem internet. Confira a conexão e tente de novo.';
+function semRede(){return navigator.onLine===false}
+function recebido(){st={};salva();mostra('pf-fim');$('pf-fim').querySelector('h1').textContent='Recebemos seu pedido.';$('t-fim').textContent='Vamos falar com você em instantes.';$('pdvet-adicional').hidden=true}
 function conversao(){if(typeof window.gtag==='function'){try{window.gtag('event','conversion',{send_to:SEND_TO})}catch(e){}}}
 
 // ---------- e-mail: sugestão de correção (o lead confirma) e dados do lead cadastrado
@@ -428,7 +434,7 @@ var cad=null;
 
 // ---------- etapa 1
 var f1=$('f1'),b1=$('b1'),s1=$('s1');
-f1.addEventListener('submit',function(e){e.preventDefault();limpaErros(f1);s1.textContent='';
+f1.addEventListener('submit',function(e){e.preventDefault();if(b1.disabled)return;limpaErros(f1);s1.textContent='';
  var c={nome:f1.nome.value.trim(),whatsapp:f1.whatsapp.value.trim(),email:f1.email.value.trim(),cnpj:dig(f1.cnpj.value),caixas:f1.caixas.value.trim(),produtos:marcados(f1,'produtos'),consentimento_lgpd:$('f-lgpd').checked,optin_whatsapp:$('f-optin').checked,optin_whatsapp_texto:$('t-optin').textContent,website:f1.website.value};
  var er=[];
  if(c.nome.length<2||!/[A-Za-zÀ-ÿ]/.test(c.nome))er.push({campo:'nome',erro:c.nome?'invalido':'obrigatorio'});
@@ -442,14 +448,16 @@ f1.addEventListener('submit',function(e){e.preventDefault();limpaErros(f1);s1.te
  if(confereEmail()){$('sug-email').scrollIntoView({block:'center'});$('sug-sim').focus();return}
  if(temTef)c.caixas=cx;var o=origem();for(var k in o)c[k]=o[k];
  if(cad){c.lead_id_cadastro=cad.lead_id;c.token_cadastro=cad.token;c.email_alterado=c.email.toLowerCase()!==cad.email.toLowerCase()}
- b1.disabled=true;s1.textContent='Enviando e consultando o CNPJ…';
- envia(E1,c).then(function(x){var j=x.j;b1.disabled=false;s1.textContent='';
+ if(semRede()){s1.textContent=SEM_REDE;return}
+ b1.disabled=true;s1.textContent=PREPARANDO;
+ envia(E1,c).then(function(x){var j=x.j;s1.textContent='';
   if(x.status===200&&j.ok){
    if(j.proximo==='pdvet'){conversao();$('l-pdvet').href=(j.url&&/^https:\/\//.test(j.url))?j.url:PDVET;mostra('pf-pdvet');return}
    if(j.proximo==='etapa2'&&j.lead_id&&j.pedido_token){conversao();st.lead_id=j.lead_id;st.pedido_token=j.pedido_token;st.produtos=(Array.isArray(j.produtos)&&j.produtos.length)?j.produtos:c.produtos;st.adicional=(Array.isArray(j.interesse_adicional)&&j.interesse_adicional.indexOf('pdvet')>=0)?((j.url_pdvet&&/^https:\/\//.test(j.url_pdvet))?j.url_pdvet:PDVET):'';st.email=c.email;st.cnpj=c.cnpj;st.empresa=j.empresa||{};salva();preparaE2();mostra('pf-e2');return}
    mostra('pf-fim');$('t-fim').textContent='Recebemos seus dados. Nossa equipe comercial entra em contato.';return}
-  if(x.status===422&&j.erros){marca(j.erros);j.erros.forEach(function(y){if(y.campo==='email'&&y.sugestao){var sg=String(y.sugestao),v=$('f-email').value.trim();mostraSugestao(v,sg.indexOf('@')>0?sg:v.slice(0,v.lastIndexOf('@')+1)+sg)}});return}
-  s1.textContent=j.mensagem||FALHA}).catch(function(){b1.disabled=false;s1.textContent=FALHA})});
+  if(x.status===422&&j.erros){b1.disabled=false;marca(j.erros);j.erros.forEach(function(y){if(y.campo==='email'&&y.sugestao){var sg=String(y.sugestao),v=$('f-email').value.trim();mostraSugestao(v,sg.indexOf('@')>0?sg:v.slice(0,v.lastIndexOf('@')+1)+sg)}});return}
+  if(x.status===429){b1.disabled=false;s1.textContent=j.mensagem||FALHA;return}
+  recebido()}).catch(function(){s1.textContent='';recebido()})});
 
 // ---------- etapa 2
 var f2=$('f2'),b2=$('b2'),s2=$('s2');
@@ -459,7 +467,7 @@ function preparaE2(){var em=st.empresa||{},conf=em.cnpj_confirmado===true&&em.ra
  else{$('bloco-empresa').hidden=true;$('c-razao').hidden=false;$('f-razao').value='';$('d-razao').textContent='Não conseguimos consultar o CNPJ agora. Digite a razão social da empresa.'}}
 $('b-correto').addEventListener('click',function(){$('acoes-empresa').hidden=true;$('m-correto').hidden=false;$('c-razao').hidden=true;$('f-razao').value=(st.empresa||{}).razao_social||''});
 $('b-corrigir').addEventListener('click',function(){$('acoes-empresa').hidden=true;$('m-correto').hidden=true;$('c-razao').hidden=false;$('d-razao').textContent='Digite a razão social correta.';$('f-razao').focus()});
-f2.addEventListener('submit',function(e){e.preventDefault();limpaErros(f2);s2.textContent='';
+f2.addEventListener('submit',function(e){e.preventDefault();if(b2.disabled)return;limpaErros(f2);s2.textContent='';
  // 17/10 (Rodrigo): os produtos vêm da etapa 1; a etapa 2 pede os campos dos produtos escolhidos (C6 Pay e link)
  // 18/10 (Rodrigo): sistema PDV e lojas só com TEF; os produtos ficam no pedido da etapa 1 (não vão de novo)
  var p=st.produtos||[],c={lead_id:st.lead_id,pedido_token:st.pedido_token,razao_social:$('f-razao').value.trim(),website:f2.website.value},er=[];
@@ -471,12 +479,14 @@ f2.addEventListener('submit',function(e){e.preventDefault();limpaErros(f2);s2.te
  if(p.indexOf('link')>=0){c.faixa_link=$('f-faixa').value;if(!c.faixa_link)er.push({campo:'faixa_link',erro:'obrigatorio'})}
  if(er.length){marca(er);return}
  if(CONTA_PJ)c.conta_pj_c6=CONTA_PJ;
- b2.disabled=true;s2.textContent='Enviando…';
- envia(E2,c).then(function(x){var j=x.j;b2.disabled=false;s2.textContent='';
+ if(semRede()){s2.textContent=SEM_REDE;return}
+ b2.disabled=true;s2.textContent=PREPARANDO;
+ envia(E2,c).then(function(x){var j=x.j;s2.textContent='';
   if((x.status===200&&j.ok)||j.erro==='ja_enviado'){$('v-email').textContent=j.email||st.email||'';$('t-escalonar').hidden=!j.escalonar;var up=(Array.isArray(j.interesse_adicional)&&j.interesse_adicional.indexOf('pdvet')>=0&&j.url_pdvet&&/^https:\/\//.test(j.url_pdvet))?j.url_pdvet:st.adicional;$('pdvet-adicional').hidden=!up;if(up)$('l-pdvet-adicional').href=up;st={};salva();mostra('pf-fim');return}
-  if(x.status===422&&j.erros){if(j.erros.some(function(y){return y.erro==='c6pay_sem_tef'})){s2.textContent=MSG.produtos.c6pay_sem_tef+' Volte à etapa 1 para ajustar.';return}marca(j.erros);return}
-  if(j.erro==='pedido_nao_encontrado'){st={};salva();s2.textContent='Não encontramos seu pedido. Preencha a etapa 1 de novo.';setTimeout(function(){mostra('pf-e1')},2500);return}
-  s2.textContent=j.mensagem||FALHA}).catch(function(){b2.disabled=false;s2.textContent=FALHA})});
+  if(x.status===422&&j.erros){b2.disabled=false;if(j.erros.some(function(y){return y.erro==='c6pay_sem_tef'})){s2.textContent=MSG.produtos.c6pay_sem_tef+' Volte à etapa 1 para ajustar.';return}marca(j.erros);return}
+  if(j.erro==='pedido_nao_encontrado'){b2.disabled=false;st={};salva();s2.textContent='Não encontramos seu pedido. Preencha a etapa 1 de novo.';setTimeout(function(){b1.disabled=false;mostra('pf-e1')},2500);return}
+  if(x.status===429){b2.disabled=false;s2.textContent=j.mensagem||FALHA;return}
+  recebido()}).catch(function(){s2.textContent='';recebido()})});
 
 if(st.lead_id&&st.pedido_token&&st.produtos){preparaE2();mostra('pf-e2')}else if(st.lead_id){st={};salva()}
 })();

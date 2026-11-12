@@ -361,15 +361,66 @@ const hrefsProposta = (p) => p.$$eval('a', as => as.map(a => a.href).filter(h =>
     await ctx.close();
   });
 
-  await t('formulário: 422 marca os campos de erros[]; 503 mostra a mensagem; nenhum erro conta conversão', async () => {
+  await t('formulário: 422 marca os campos e libera o botão; 429 mostra a mensagem; nenhum erro conta conversão', async () => {
     let modo = 422;
-    const { ctx } = await contexto(b, { webhooks: () => modo === 422 ? { status: 422, body: { ok: false, erro: 'validacao', erros: [{ campo: 'email', erro: 'invalido' }, { campo: 'cnpj', erro: 'invalido' }] } } : { status: 503, body: { ok: false, erro: 'indisponivel', mensagem: 'Sistema em manutenção. Tente de novo em alguns minutos.' } } });
+    const { ctx, reqs } = await contexto(b, { webhooks: () => modo === 422 ? { status: 422, body: { ok: false, erro: 'validacao', erros: [{ campo: 'email', erro: 'invalido' }, { campo: 'cnpj', erro: 'invalido' }] } } : { status: 429, body: { ok: false, erro: 'limite', mensagem: 'Muitos envios seguidos. Tente de novo em 1 minuto.' } } });
     const p = await ctx.newPage(); await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, 'c6pay'); await p.click('#b1');
     await p.waitForFunction(() => document.getElementById('e-email').textContent.length > 0);
     assert.strictEqual(await p.getAttribute('#f-email', 'aria-invalid'), 'true'); assert.strictEqual(await p.getAttribute('#f-cnpj', 'aria-invalid'), 'true');
-    modo = 503; await p.click('#b1'); await p.waitForFunction(() => document.getElementById('s1').textContent.includes('manutenção'));
-    assert.strictEqual((await eventos(p, 'conversion')).length, 0); assert.ok(await p.isVisible('#pf-e1'));
+    assert.strictEqual(await p.isDisabled('#b1'), false, '422: botão liberado para corrigir');
+    modo = 429; await p.click('#b1'); await p.waitForFunction(() => document.getElementById('s1').textContent.includes('Muitos envios'));
+    assert.strictEqual(await p.isDisabled('#b1'), false); assert.ok(await p.isVisible('#pf-e1'));
+    assert.strictEqual((await eventos(p, 'conversion')).length, 0); assert.strictEqual(reqs.length, 2);
     await ctx.close();
+  });
+
+  // AUT-52 (12/11/2026, pedido da Operação): CNPJ lento não pode virar envio em dobro
+  await t('AUT-52: espera até 60 s com "Estamos preparando sua proposta…" e o botão travado (2º clique e Enter não reenviam); sem resposta em 60 s: "Recebemos seu pedido", sem reenviar e nunca "Não foi possível enviar"', async () => {
+    const { ctx, reqs } = await contexto(b, { webhooks: () => null });
+    // o webhook da etapa 1 não responde (simula o CNPJ lento); o relógio da página avança 60 s sem esperar de verdade
+    await ctx.route(E1, (r) => { reqs.push({ url: E1, corpo: JSON.parse(r.request().postData() || '{}') }); });
+    const p = await ctx.newPage(); await p.clock.install(); await p.goto(BASE + '/proposta.html?previa=1');
+    await preencheE1(p, ['tef']); await p.click('#b1');
+    await p.waitForFunction(() => document.getElementById('s1').textContent === 'Estamos preparando sua proposta…');
+    assert.ok(await p.isDisabled('#b1'), 'botão travado depois do 1º clique');
+    await p.click('#b1', { force: true }); await p.press('#f-nome', 'Enter'); await p.evaluate(() => document.getElementById('f1').requestSubmit());
+    await p.clock.runFor(59000); assert.ok(await p.isVisible('#pf-e1'), 'ainda esperando aos 59 s'); assert.ok(await p.isDisabled('#b1'));
+    await p.clock.runFor(2000); await p.waitForSelector('#pf-fim:not([hidden])');
+    assert.strictEqual(await p.textContent('#pf-fim h1'), 'Recebemos seu pedido.'); assert.strictEqual(await p.textContent('#t-fim'), 'Vamos falar com você em instantes.');
+    assert.strictEqual(reqs.filter(x => x.url === E1).length, 1, 'um envio só');
+    assert.ok(!/Não foi possível enviar/.test(await p.textContent('main')));
+    assert.strictEqual(await p.evaluate(() => sessionStorage.getItem('antere_form_site')), JSON.stringify({}), 'sem pedido guardado para retomar');
+    await ctx.close();
+  });
+  await t('AUT-52: erro do servidor (503) ou queda da rede no meio do envio: "Recebemos seu pedido" (etapa 1 e etapa 2); sem internet antes de enviar: avisa e não envia', async () => {
+    for (const [nome, resp] of [['503', { status: 503, body: { ok: false, erro: 'indisponivel', mensagem: 'Sistema em manutenção.' } }], ['500', { status: 500, body: {} }]]) {
+      const { ctx, reqs } = await contexto(b, { webhooks: () => resp }); const p = await ctx.newPage(); await p.goto(BASE + '/proposta.html?previa=1');
+      await preencheE1(p, ['tef']); await p.click('#b1'); await p.waitForSelector('#pf-fim:not([hidden])');
+      assert.strictEqual(await p.textContent('#pf-fim h1'), 'Recebemos seu pedido.', nome); assert.ok(!/Não foi possível enviar|manutenção/.test(await p.textContent('main')), nome);
+      assert.strictEqual((await eventos(p, 'conversion')).length, 0, nome); assert.strictEqual(reqs.length, 1, nome);
+      await ctx.close();
+    }
+    { // queda da rede depois de sair o pedido
+      const { ctx, reqs } = await contexto(b); await ctx.route(E1, (r) => { reqs.push({ url: E1 }); return r.abort('connectionreset'); });
+      const p = await ctx.newPage(); await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, ['tef']); await p.click('#b1');
+      await p.waitForSelector('#pf-fim:not([hidden])'); assert.strictEqual(await p.textContent('#pf-fim h1'), 'Recebemos seu pedido.'); assert.strictEqual(reqs.length, 1);
+      await ctx.close();
+    }
+    { // etapa 2: erro do servidor também vira "Recebemos seu pedido"
+      const { ctx, reqs } = await contexto(b, { webhooks: (url, c) => url === E1 ? etapa1Ok(EMP)(url, c) : { status: 502, body: {} } });
+      const p = await ctx.newPage(); await p.goto(BASE + '/proposta.html?previa=1'); await preencheE1(p, ['tef']); await p.click('#b1'); await p.waitForSelector('#pf-e2:not([hidden])');
+      await p.fill('#f-sistema', 'Linx'); await p.fill('#f-lojas', '1'); await p.click('#b2'); await p.waitForSelector('#pf-fim:not([hidden])');
+      assert.strictEqual(await p.textContent('#pf-fim h1'), 'Recebemos seu pedido.'); assert.strictEqual(reqs.length, 2);
+      assert.ok(!/Não foi possível enviar/.test(await p.textContent('main')));
+      await ctx.close();
+    }
+    { // sem internet antes de enviar: nada sai, avisa e deixa tentar de novo
+      const { ctx, reqs } = await contexto(b, { webhooks: etapa1Ok(EMP) }); const p = await ctx.newPage(); await p.goto(BASE + '/proposta.html?previa=1');
+      await preencheE1(p, ['tef']); await ctx.setOffline(true); await p.click('#b1');
+      assert.strictEqual(await p.textContent('#s1'), 'Você está sem internet. Confira a conexão e tente de novo.'); assert.strictEqual(reqs.length, 0); assert.strictEqual(await p.isDisabled('#b1'), false);
+      await ctx.setOffline(false); await p.click('#b1'); await p.waitForSelector('#pf-e2:not([hidden])'); assert.strictEqual(reqs.length, 1);
+      await ctx.close();
+    }
   });
 
   await t('formulário: tema escuro em todas as telas e estados (sem fundo claro, contraste ≥ 4,5, controles nativos escuros), com o aparelho em modo claro ou escuro', async () => {
